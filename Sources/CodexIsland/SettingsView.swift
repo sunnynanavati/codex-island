@@ -235,7 +235,7 @@ private struct SettingSlider: View {
             if model.snapshot.refreshedAt != .distantPast {
                 LabeledContent("Last task refresh", value: model.snapshot.refreshedAt.formatted(date: .abbreviated, time: .standard))
             }
-            LabeledContent("Active chats", value: String(model.snapshot.activeAgentCount))
+            LabeledContent("Active chats", value: String(model.snapshot.activeChatCount))
             if let quota = model.snapshot.quota, let checked = quota.observedAt {
                 LabeledContent("Quota checked", value: checked.formatted(date: .abbreviated, time: .standard))
             } else {

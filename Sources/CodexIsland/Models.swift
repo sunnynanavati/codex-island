@@ -139,6 +139,17 @@ struct IslandSnapshot: Equatable, Sendable {
         tasks.filter { !$0.state.isActive && !$0.isChildAgent }.prefix(12).map { $0 }
     }
     var attentionCount: Int { tasks.filter { $0.state.needsAttention }.count }
+    var activeChatCount: Int {
+        let ids = activeTasks.compactMap { task -> String? in
+            guard task.isChildAgent else { return task.id }
+            guard let root = task.rootChatID, root != task.id else { return nil }
+            return root
+        }
+        return Set(ids).count
+    }
+    var activeChatSummary: String {
+        "\(activeChatCount) active \(activeChatCount == 1 ? "chat" : "chats")"
+    }
     var activeAgentCount: Int {
         activeTasks.reduce(0) { $0 + max(1, $1.agentCount) }
     }

@@ -173,7 +173,7 @@ struct IslandView: View {
                 }
                 .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
                 HStack {
-                    Text("\(model.snapshot.activeAgentCount) active · \(model.snapshot.attentionCount) attention")
+                    Text("\(model.snapshot.activeChatSummary) · \(model.snapshot.attentionCount) attention")
                     Spacer()
                     Image(systemName: "arrow.down.right.and.arrow.up.left").rotationEffect(.degrees(180))
                 }
@@ -277,7 +277,7 @@ struct IslandView: View {
                             .foregroundStyle(statusColor(primary.state))
                             .contentTransition(.opacity)
                         Spacer()
-                        Text("\(model.snapshot.activeAgentCount) active · \(model.snapshot.attentionCount) attention")
+                        Text("\(model.snapshot.activeChatSummary) · \(model.snapshot.attentionCount) attention")
                             .foregroundStyle(IslandDesign.secondary)
                     }
                     .font(.system(size: 11, weight: .medium))
