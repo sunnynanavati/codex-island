@@ -118,9 +118,9 @@ struct SettingsView: View {
             Section("Curve & spacing") {
                 Toggle("Automatic wave reach", isOn: Binding(
                     get: { preferences.values.calibration.waveReach == nil },
-                    set: { preferences.values.calibration.waveReach = $0 ? nil : 140 }))
+                    set: { preferences.values.calibration.setAutomaticWaveReach($0, automaticReach: automaticWaveReach) }))
                 SettingSlider("Wave reach", value: Binding(
-                    get: { preferences.values.calibration.waveReach ?? 140 },
+                    get: { preferences.values.calibration.waveReach ?? automaticWaveReach },
                     set: { preferences.values.calibration.waveReach = $0 }), range: 40...220, step: 1, unit: "pt")
                     .disabled(preferences.values.calibration.waveReach == nil)
                 if preferences.values.calibration.waveReach == nil {
@@ -135,6 +135,14 @@ struct SettingsView: View {
             }
             Section { Button("Reset Layout") { preferences.resetLayout() } }
         }
+    }
+
+    private var automaticWaveReach: Double {
+        var calibration = preferences.values.calibration
+        calibration.waveReach = nil
+        return Double(PanelController.layout(calibration: calibration, cubeCount: 1, statusLabel: "",
+                                             typography: preferences.values.typography,
+                                             preferences: preferences.values, usesWorkingWidth: false).compactShoulderReach)
     }
 
     private var motion: some View {

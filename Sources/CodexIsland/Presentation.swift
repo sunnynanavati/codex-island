@@ -52,6 +52,7 @@ struct Calibration: Codable, Equatable, Sendable {
     var shoulderReach: Double
     var adaptiveWidth: Bool
     var waveReach: Double?
+    var rememberedWaveReach: Double?
     var compactSize: Double
 
     init(horizontalOffset: Double = 0, widthAdjustment: Double = 0, shoulderReach: Double = 100,
@@ -61,11 +62,12 @@ struct Calibration: Codable, Equatable, Sendable {
         self.shoulderReach = shoulderReach
         self.adaptiveWidth = adaptiveWidth
         self.waveReach = waveReach
+        self.rememberedWaveReach = waveReach
         self.compactSize = compactSize
     }
 
     private enum CodingKeys: String, CodingKey {
-        case horizontalOffset, widthAdjustment, shoulderReach, adaptiveWidth, waveReach, compactSize
+        case horizontalOffset, widthAdjustment, shoulderReach, adaptiveWidth, waveReach, rememberedWaveReach, compactSize
     }
 
     init(from decoder: Decoder) throws {
@@ -75,7 +77,17 @@ struct Calibration: Codable, Equatable, Sendable {
         shoulderReach = try values.decodeIfPresent(Double.self, forKey: .shoulderReach) ?? 100
         adaptiveWidth = try values.decodeIfPresent(Bool.self, forKey: .adaptiveWidth) ?? true
         waveReach = try values.decodeIfPresent(Double.self, forKey: .waveReach)
+        rememberedWaveReach = try values.decodeIfPresent(Double.self, forKey: .rememberedWaveReach) ?? waveReach
         compactSize = try values.decodeIfPresent(Double.self, forKey: .compactSize) ?? 0
+    }
+
+    mutating func setAutomaticWaveReach(_ enabled: Bool, automaticReach: Double) {
+        if enabled {
+            if let waveReach { rememberedWaveReach = waveReach }
+            waveReach = nil
+        } else if waveReach == nil {
+            waveReach = rememberedWaveReach ?? automaticReach
+        }
     }
 
     static let defaultsKey = "CodexIsland.calibration"

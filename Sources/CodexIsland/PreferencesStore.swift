@@ -54,6 +54,7 @@ struct IslandPreferences: Codable, Equatable {
         result.calibration.shoulderReach = clamp(calibration.shoulderReach, 0...140, 100)
         result.calibration.compactSize = clamp(calibration.compactSize, 0...1, 0)
         result.calibration.waveReach = calibration.waveReach.map { clamp($0, 40...220, 140) }
+        result.calibration.rememberedWaveReach = calibration.rememberedWaveReach.map { clamp($0, 40...220, 140) }
         return result
     }
 }
