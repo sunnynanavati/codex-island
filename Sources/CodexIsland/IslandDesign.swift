@@ -87,7 +87,6 @@ struct IslandPressStyle: ButtonStyle {
 
 struct IslandButton<Label: View>: View {
     var motionEnabled = true
-    var focusRequested = false
     var action: () -> Void
     @ViewBuilder var label: () -> Label
     @FocusState private var focused: Bool
@@ -97,11 +96,9 @@ struct IslandButton<Label: View>: View {
             .buttonStyle(IslandPressStyle(motionEnabled: motionEnabled))
             .focusable()
             .focused($focused)
+            .focusEffectDisabled()
             .onKeyPress(.space) { action(); return .handled }
             .onKeyPress(.return) { action(); return .handled }
-            .onChange(of: focusRequested, initial: true) { _, requested in
-                if requested { focused = true }
-            }
             .background(hovered ? Color.white.opacity(0.055) : .clear,
                         in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous)

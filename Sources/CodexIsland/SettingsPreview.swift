@@ -73,7 +73,7 @@ struct SettingsIslandPreview: View {
         let layout = PanelController.layout(calibration: values.calibration, cubeCount: model.cubes.count,
                                             statusLabel: model.compactLabel, typography: values.typography,
                                             preferences: values, sizingLabel: model.rail.sizingLabel,
-                                            usesWorkingWidth: model.rail.usesWorkingWidth)
+                                            usesWorkingWidth: model.rail.usesWorkingWidth, expandedBodyHeight: model.expandedBodyHeight)
         motion = IslandMotionCoordinator(layout: layout)
         super.init(frame: .zero)
         hosting = NSHostingView(rootView: PreviewDrawing(model: model, motion: motion))
@@ -124,7 +124,7 @@ struct SettingsIslandPreview: View {
         let layout = PanelController.layout(calibration: values.calibration, cubeCount: model.cubes.count,
                                             statusLabel: model.compactLabel, typography: values.typography,
                                             preferences: values, sizingLabel: model.rail.sizingLabel,
-                                            usesWorkingWidth: model.rail.usesWorkingWidth)
+                                            usesWorkingWidth: model.rail.usesWorkingWidth, expandedBodyHeight: model.expandedBodyHeight)
         model.notchGap = layout.notchGapWidth
         motion.speed = values.springSpeed
         motion.update(layout: layout, state: state,

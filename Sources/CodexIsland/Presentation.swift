@@ -149,7 +149,8 @@ struct IslandLayout: Equatable, Sendable {
         calibration: Calibration,
         compactWingWidth: CGFloat? = nil,
         railGeometry: RailGeometry? = nil,
-        usesWorkingWidth: Bool = true
+        usesWorkingWidth: Bool = true,
+        expandedBodyHeight: CGFloat = 442
     ) -> IslandLayout {
         let nativeGap: CGFloat
         if let leftAuxiliaryMaxX, let rightAuxiliaryMinX, rightAuxiliaryMinX > leftAuxiliaryMaxX {
@@ -194,7 +195,7 @@ struct IslandLayout: Equatable, Sendable {
         return IslandLayout(
             compactFrame: frame(width: compactWidth, height: compactHeight),
             previewFrame: frame(width: hoverWidth, height: compactHeight + 116),
-            expandedFrame: frame(width: expandedWidth, height: compactHeight + 442),
+            expandedFrame: frame(width: expandedWidth, height: compactHeight + max(116, expandedBodyHeight)),
             notchGapWidth: effectiveGap, shoulderReach: shoulderReach, compactShoulderReach: compactReach,
             screenMinX: screenFrame.minX, screenMaxX: screenFrame.maxX, railGeometry: railGeometry
         )

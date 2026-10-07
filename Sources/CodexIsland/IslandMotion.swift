@@ -47,6 +47,7 @@ final class IslandMotionCoordinator: NSObject, ObservableObject {
     private(set) var statusWidthSpring: IslandSpring
     private var previewWidthSpring: IslandSpring
     private var expandedWidthSpring: IslandSpring
+    private(set) var expandedHeightSpring: IslandSpring
     private var targetLayout: IslandLayout
     private var displayLink: CADisplayLink?
     private weak var displayView: NSView?
@@ -74,6 +75,7 @@ final class IslandMotionCoordinator: NSObject, ObservableObject {
                                         target: Double(layout.railGeometry?.statusWidth ?? 0))
         previewWidthSpring = IslandSpring(value: layout.previewFrame.width, velocity: 0, target: layout.previewFrame.width)
         expandedWidthSpring = IslandSpring(value: layout.expandedFrame.width, velocity: 0, target: layout.expandedFrame.width)
+        expandedHeightSpring = IslandSpring(value: layout.expandedFrame.height, velocity: 0, target: layout.expandedFrame.height)
         super.init()
     }
 
@@ -81,12 +83,14 @@ final class IslandMotionCoordinator: NSObject, ObservableObject {
 
     func update(layout: IslandLayout, state: PresentationState, policy: IslandMotionPolicy) {
         let geometryChanged = widthSpring.target != layout.compactFrame.width ||
-            statusWidthSpring.target != Double(layout.railGeometry?.statusWidth ?? 0)
+            statusWidthSpring.target != Double(layout.railGeometry?.statusWidth ?? 0) ||
+            expandedHeightSpring.target != layout.expandedFrame.height
         targetLayout = layout
         widthSpring.target = layout.compactFrame.width
         statusWidthSpring.target = Double(layout.railGeometry?.statusWidth ?? 0)
         previewWidthSpring.target = layout.previewFrame.width
         expandedWidthSpring.target = layout.expandedFrame.width
+        expandedHeightSpring.target = layout.expandedFrame.height
         self.layout = sampledLayout()
         self.policy = policy
         let target = state == .compact ? 0.0 : state == .preview ? 1.0 : 2.0
@@ -108,6 +112,7 @@ final class IslandMotionCoordinator: NSObject, ObservableObject {
             statusWidthSpring.value = statusWidthSpring.target; statusWidthSpring.velocity = 0
             previewWidthSpring.value = previewWidthSpring.target; previewWidthSpring.velocity = 0
             expandedWidthSpring.value = expandedWidthSpring.target; expandedWidthSpring.velocity = 0
+            expandedHeightSpring.value = expandedHeightSpring.target; expandedHeightSpring.velocity = 0
             self.layout = layout
             progress = target
             if target == 0 { previewContentEligible = false }
@@ -149,6 +154,7 @@ final class IslandMotionCoordinator: NSObject, ObservableObject {
         statusWidthSpring.advance(by: dt * min(1.2, max(0.8, speed)))
         previewWidthSpring.advance(by: dt * min(1.2, max(0.8, speed)))
         expandedWidthSpring.advance(by: dt * min(1.2, max(0.8, speed)))
+        expandedHeightSpring.advance(by: dt * min(1.2, max(0.8, speed)))
         layout = sampledLayout()
         progress = spring.value
         onFrame?(frame)
@@ -160,20 +166,22 @@ final class IslandMotionCoordinator: NSObject, ObservableObject {
 
     private var settled: Bool {
         spring.isSettled && widthSpring.isSettled && statusWidthSpring.isSettled &&
-            previewWidthSpring.isSettled && expandedWidthSpring.isSettled
+            previewWidthSpring.isSettled && expandedWidthSpring.isSettled && expandedHeightSpring.isSettled
     }
 
     private func sampledLayout() -> IslandLayout {
         let sampled = targetLayout.withCompactWidth(CGFloat(widthSpring.value))
         guard let geometry = sampled.railGeometry else { return sampled }
-        func centered(_ frame: CGRect, width: Double) -> CGRect {
+        func centered(_ frame: CGRect, width: Double, height: CGFloat? = nil) -> CGRect {
             let width = min(CGFloat(width), sampled.screenMaxX - sampled.screenMinX)
             let x = min(max(frame.midX - width / 2, sampled.screenMinX), sampled.screenMaxX - width)
-            return CGRect(x: x, y: frame.minY, width: width, height: frame.height)
+            let height = height ?? frame.height
+            return CGRect(x: x, y: frame.maxY - height, width: width, height: height)
         }
         return IslandLayout(compactFrame: sampled.compactFrame,
                             previewFrame: centered(targetLayout.previewFrame, width: previewWidthSpring.value),
-                            expandedFrame: centered(targetLayout.expandedFrame, width: expandedWidthSpring.value),
+                            expandedFrame: centered(targetLayout.expandedFrame, width: expandedWidthSpring.value,
+                                                    height: CGFloat(expandedHeightSpring.value)),
                             notchGapWidth: sampled.notchGapWidth, shoulderReach: sampled.shoulderReach,
                             compactShoulderReach: sampled.compactShoulderReach, screenMinX: sampled.screenMinX,
                             screenMaxX: sampled.screenMaxX,

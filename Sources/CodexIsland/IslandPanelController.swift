@@ -25,7 +25,7 @@ final class PanelController {
         let layout = Self.layout(calibration: model.calibration, cubeCount: model.cubes.count,
                                  statusLabel: model.compactLabel, typography: model.typography,
                                  preferences: model.preferences.values, sizingLabel: model.rail.sizingLabel,
-                                 usesWorkingWidth: model.rail.usesWorkingWidth)
+                                 usesWorkingWidth: model.rail.usesWorkingWidth, expandedBodyHeight: model.expandedBodyHeight)
         motion = IslandMotionCoordinator(layout: layout)
         panel = IslandPanel(contentRect: layout.compactFrame, styleMask: [.borderless, .nonactivatingPanel],
                             backing: .buffered, defer: false)
@@ -132,7 +132,7 @@ final class PanelController {
         let layout = Self.layout(calibration: model.calibration, cubeCount: model.cubes.count,
                                  statusLabel: model.compactLabel, typography: model.typography,
                                  preferences: model.preferences.values, sizingLabel: model.rail.sizingLabel,
-                                 usesWorkingWidth: model.rail.usesWorkingWidth)
+                                 usesWorkingWidth: model.rail.usesWorkingWidth, expandedBodyHeight: model.expandedBodyHeight)
         model.notchGap = layout.notchGapWidth
         motion.speed = model.preferences.values.springSpeed
         panel.permitsKeyboard = model.presentation == .pinned
@@ -146,6 +146,7 @@ final class PanelController {
             }
             NSApp.activate(ignoringOtherApps: true)
             panel.makeKeyAndOrderFront(nil)
+            panel.makeFirstResponder(nil)
         } else if model.presentation != .pinned, panel.isKeyWindow {
             panel.resignKey()
             if NSWorkspace.shared.frontmostApplication?.processIdentifier == ProcessInfo.processInfo.processIdentifier {
@@ -160,7 +161,7 @@ final class PanelController {
     static func layout(calibration: Calibration, cubeCount: Int, statusLabel: String,
                        typography: CompactTypography = .init(),
                        preferences: IslandPreferences? = nil, sizingLabel: String? = nil,
-                       usesWorkingWidth: Bool = true) -> IslandLayout {
+                       usesWorkingWidth: Bool = true, expandedBodyHeight: CGFloat = 442) -> IslandLayout {
         let screens = NSScreen.screens
         let screen = screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.main ?? screens.first
         let geometry = railGeometry(cubeCount: cubeCount, label: sizingLabel ?? (statusLabel.isEmpty ? nil : statusLabel),
@@ -170,12 +171,13 @@ final class PanelController {
             return IslandLayout.calculate(screenFrame: CGRect(x: 0, y: 0, width: 1440, height: 900),
                                           safeTopInset: 32, leftAuxiliaryMaxX: nil,
                                           rightAuxiliaryMinX: nil, calibration: calibration,
-                                          railGeometry: geometry, usesWorkingWidth: usesWorkingWidth)
+                                          railGeometry: geometry, usesWorkingWidth: usesWorkingWidth, expandedBodyHeight: expandedBodyHeight)
         }
         return IslandLayout.calculate(screenFrame: screen.frame, safeTopInset: screen.safeAreaInsets.top,
                                       leftAuxiliaryMaxX: screen.auxiliaryTopLeftArea?.maxX,
                                       rightAuxiliaryMinX: screen.auxiliaryTopRightArea?.minX,
-                                      calibration: calibration, railGeometry: geometry, usesWorkingWidth: usesWorkingWidth)
+                                      calibration: calibration, railGeometry: geometry, usesWorkingWidth: usesWorkingWidth,
+                                      expandedBodyHeight: expandedBodyHeight)
     }
 
     static func railGeometry(cubeCount: Int, label: String?, typography: CompactTypography,

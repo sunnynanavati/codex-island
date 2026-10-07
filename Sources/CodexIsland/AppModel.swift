@@ -24,7 +24,9 @@ enum AppLog {
 final class AppModel: ObservableObject {
     @Published private(set) var snapshot = IslandSnapshot.empty
     @Published var presentation = PresentationState.compact
-    @Published var page = IslandPage.activity
+    @Published var page = IslandPage.activity {
+        didSet { if page != oldValue { onLayoutChange?() } }
+    }
     @Published private(set) var rail = RailPresentation()
     var cubes: [CubeDescriptor] { rail.cubes }
     @Published var notchGap: CGFloat = 180
@@ -63,6 +65,11 @@ final class AppModel: ObservableObject {
     private var lastReadError: String?
     private var loggedFirstQuota = false
     var onLayoutChange: (() -> Void)?
+    private var lastExpandedBodyHeight: CGFloat?
+    var expandedBodyHeight: CGFloat {
+        page == .activity && snapshot.primaryTask == nil && snapshot.errorMessage == nil &&
+            !snapshot.tasks.contains(where: { $0.state.isActive || $0.state.needsAttention }) ? 302 : 442
+    }
     var compactLabel: String {
         rail.label ?? ""
     }
@@ -154,7 +161,9 @@ final class AppModel: ObservableObject {
         rail.update(snapshot: snapshot, now: now,
                     completionAnimated: animationsEnabled && preferences.values.cubeAnimationsEnabled &&
                         !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
-        if rail != previous { onLayoutChange?() }
+        let heightChanged = lastExpandedBodyHeight != expandedBodyHeight
+        lastExpandedBodyHeight = expandedBodyHeight
+        if rail != previous || heightChanged { onLayoutChange?() }
         guard rail.completionDeadline != previous.completionDeadline else { return }
         completionTask?.cancel()
         completionTask = nil

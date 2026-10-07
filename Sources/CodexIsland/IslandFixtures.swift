@@ -84,7 +84,7 @@ enum IslandPreviewRenderer {
                                                railGeometry: PanelController.railGeometry(
                                                 cubeCount: model.cubes.count, label: model.rail.sizingLabel,
                                                 typography: model.typography, preferences: model.preferences.values, displayScale: 2),
-                                               usesWorkingWidth: model.rail.usesWorkingWidth)
+                                               usesWorkingWidth: model.rail.usesWorkingWidth, expandedBodyHeight: model.expandedBodyHeight)
             let motion = IslandMotionCoordinator(layout: layout)
             model.notchGap = layout.notchGapWidth
             motion.update(layout: layout, state: stage, policy: .immediate)

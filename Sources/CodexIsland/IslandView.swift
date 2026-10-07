@@ -293,11 +293,8 @@ struct IslandView: View {
                 }
             } else {
                 Text("All quiet.").font(.system(size: 21, weight: .semibold))
-                Text("Your next Codex task will appear here.")
-                    .font(.system(size: 12)).foregroundStyle(IslandDesign.secondary)
             }
-            Text("Today  \(model.snapshot.dailyStats.completedTurns) turns  ·  \(IslandDesign.duration(model.snapshot.dailyStats.activeDuration)) active")
-                .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary).monospacedDigit()
+            dailySummary
             let others = model.snapshot.tasks.filter {
                 $0.id != model.snapshot.primaryTaskID && ($0.state.isActive || $0.state.needsAttention)
             }
@@ -361,10 +358,6 @@ struct IslandView: View {
                     HStack {
                         Text(quota.windowMinutes >= 1440 ? "\(quota.windowMinutes / 1440)-day quota" : "\(quota.windowMinutes / 60)-hour quota")
                             .foregroundStyle(IslandDesign.secondary)
-                        if let checked = quota.observedAt {
-                            Text("· checked \(checked.formatted(date: .omitted, time: .shortened))")
-                                .foregroundStyle(IslandDesign.secondary)
-                        }
                         Spacer()
                         Text("\(Int(quota.remainingPercent))% remaining")
                             .foregroundStyle(IslandDesign.quotaColor(quota))
@@ -420,12 +413,24 @@ struct IslandView: View {
 
     private func iconButton(_ symbol: String, _ label: String, action: @escaping () -> Void) -> some View {
         IslandButton(motionEnabled: model.animationsEnabled,
-                     focusRequested: expandedInteractive &&
-                        ((label == "Recent tasks" && model.page == .activity) || label == "Back to activity"),
                      action: action) {
             Image(systemName: symbol).font(.system(size: 11, weight: .medium))
                 .foregroundStyle(IslandDesign.secondary).frame(width: 30, height: 30).contentShape(Rectangle())
         }.accessibilityLabel(label).help(label)
+    }
+
+    private var dailySummary: some View {
+        let summary = DailySummary(stats: model.snapshot.dailyStats)
+        var text = AttributedString(summary.sentence)
+        text.foregroundColor = IslandDesign.secondary
+        for value in [summary.turns, summary.duration] {
+            if let range = text.range(of: value) {
+                text[range].foregroundColor = .white
+                text[range].font = .system(size: 12, weight: .medium)
+            }
+        }
+        return Text(text).font(.system(size: 12)).lineSpacing(4)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func action(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
