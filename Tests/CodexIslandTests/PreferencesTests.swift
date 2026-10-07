@@ -3,6 +3,22 @@ import XCTest
 @testable import CodexIsland
 
 final class PreferencesTests: XCTestCase {
+    @MainActor func testDeletingPresetPreservesCurrentSettingsAndOtherPresets() {
+        let store = PreferencesStore(defaults: nil)
+        store.values.statusGap = 13
+        store.savePreset(name: "Quiet")
+        store.savePreset(name: "Second")
+        let selected = store.presets[0]
+        let values = store.values
+        // Merely selecting a preset for confirmation must not remove it.
+        XCTAssertEqual(store.presets.count, 2)
+        store.deletePreset(id: selected.id)
+        XCTAssertEqual(store.presets.map(\.name), ["Second"])
+        XCTAssertEqual(store.values, values)
+        store.deletePreset(id: selected.id)
+        XCTAssertEqual(store.presets.count, 1)
+    }
+
     @MainActor func testLegacyPreferencesMigrateOnceWithoutOverwritingNewChoices() throws {
         let suite = "CodexIsland.tests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

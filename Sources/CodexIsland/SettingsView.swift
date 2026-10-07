@@ -251,6 +251,7 @@ private struct SettingSlider: View {
     @State private var name = ""
     @State private var renaming: UUID?
     @State private var rename = ""
+    @State private var deleting: AppearancePreset?
     var body: some View {
         Form {
             Section("Save this look") {
@@ -275,7 +276,7 @@ private struct SettingSlider: View {
                         Menu {
                             Button("Rename…") { rename = preset.name; renaming = preset.id }
                             Button("Duplicate") { preferences.duplicatePreset(id: preset.id) }
-                            Button("Delete", role: .destructive) { preferences.deletePreset(id: preset.id) }
+                            Button("Delete…", role: .destructive) { deleting = preset }
                         } label: { Image(systemName: "ellipsis") }.menuStyle(.borderlessButton).frame(width: 24)
                             .accessibilityLabel("Actions for \(preset.name)")
                     }
@@ -288,6 +289,16 @@ private struct SettingSlider: View {
             Button("Save") {
                 if let id = renaming { preferences.renamePreset(id: id, name: rename) }; renaming = nil
             }.disabled(rename.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        }
+        .alert("Delete preset?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+               presenting: deleting) { preset in
+            Button("Cancel", role: .cancel) { deleting = nil }
+            Button("Delete preset", role: .destructive) {
+                preferences.deletePreset(id: preset.id)
+                deleting = nil
+            }
+        } message: { preset in
+            Text("Delete “\(preset.name)”? This cannot be undone. Your current settings will not change.")
         }
     }
 }
