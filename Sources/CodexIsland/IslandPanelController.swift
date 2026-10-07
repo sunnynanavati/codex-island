@@ -11,7 +11,7 @@ final class IslandPanel: NSPanel {
 @MainActor
 final class PanelController {
     private let panel: IslandPanel
-    private let surfaceMask = CAShapeLayer()
+    private let surface: IslandSurfaceView
     private let model: AppModel
     private let motion: IslandMotionCoordinator
     private var globalMonitor: Any?
@@ -29,6 +29,7 @@ final class PanelController {
         motion = IslandMotionCoordinator(layout: layout)
         panel = IslandPanel(contentRect: layout.compactFrame, styleMask: [.borderless, .nonactivatingPanel],
                             backing: .buffered, defer: false)
+        surface = IslandSurfaceView(frame: CGRect(origin: .zero, size: layout.compactFrame.size))
         panel.level = .statusBar
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -38,17 +39,29 @@ final class PanelController {
         panel.isMovable = false
         panel.acceptsMouseMovedEvents = true
         model.notchGap = layout.notchGapWidth
-        let hosting = NSHostingView(rootView: IslandView(model: model, motion: motion, cubeFrozenOverride: cubeFrozenOverride))
+        let hosting = NSHostingView(rootView: IslandView(model: model, motion: motion, cubeFrozenOverride: cubeFrozenOverride,
+                                                        nativeSurface: true))
         hosting.sizingOptions = []
         hosting.wantsLayer = true
-        panel.contentView = hosting
-        surfaceMask.fillColor = NSColor.white.cgColor
-        hosting.layer?.mask = surfaceMask
+        hosting.frame = surface.bounds
+        hosting.autoresizingMask = [.width, .height]
+        surface.addSubview(hosting)
+        panel.contentView = surface
         motion.attach(to: hosting)
         motion.onFrame = { [weak self] frame in
             guard let self else { return }
-            self.updateSurfaceMask(size: frame.size)
-            self.panel.setFrame(frame, display: true)
+            // Resize, lay out content, and commit the single contour as one native frame.
+            // Drawing before the mask update exposes the previous frame's clear pixels.
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            let aligned = IslandPanelGeometry.alignedFrame(frame, scale: self.panel.backingScaleFactor)
+            self.panel.setFrame(aligned, display: false)
+            self.surface.layoutSubtreeIfNeeded()
+            self.surface.updateContour(radius: self.motion.cornerRadius,
+                                       shoulderReach: self.motion.layout.shoulderReach(at: self.motion.progress),
+                                       shoulderHeight: self.motion.shoulderHeight,
+                                       blend: min(1, max(0, self.motion.progress)))
+            CATransaction.commit()
             self.updateClickThrough()
         }
         model.onLayoutChange = { [weak self] in self?.updateLayout() }
@@ -107,20 +120,6 @@ final class PanelController {
 
     private func updateClickThrough() {
         panel.ignoresMouseEvents = panel.frame.contains(NSEvent.mouseLocation) && !pointerInside
-    }
-
-    private func updateSurfaceMask(size: CGSize) {
-        let contour = IslandContour.path(size: size, radius: motion.cornerRadius,
-                                         shoulderReach: motion.layout.shoulderReach(at: motion.progress),
-                                         shoulderHeight: motion.shoulderHeight,
-                                         shoulderBlend: min(1, max(0, motion.progress)))
-        var flip = CGAffineTransform(translationX: 0, y: size.height).scaledBy(x: 1, y: -1)
-        let path = panel.contentView?.layer?.isGeometryFlipped == true ? contour : contour.copy(using: &flip)
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        surfaceMask.frame = CGRect(origin: .zero, size: size)
-        surfaceMask.path = path
-        CATransaction.commit()
     }
 
     func updateLayout() {
@@ -217,9 +216,15 @@ final class PanelController {
         guard let view = panel.contentView else { return nil }
         view.layoutSubtreeIfNeeded()
         let bounds = view.bounds
-        guard let bitmap = view.bitmapImageRepForCachingDisplay(in: bounds) else { return nil }
-        view.cacheDisplay(in: bounds, to: bitmap)
-        guard let image = bitmap.cgImage else { return nil }
+        let scale = panel.backingScaleFactor
+        guard let layer = view.layer,
+              let context = CGContext(data: nil, width: Int(bounds.width * scale), height: Int(bounds.height * scale),
+                                      bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.scaleBy(x: scale, y: scale)
+        // Include the native surface and mask, not just SwiftUI's now-transparent content.
+        layer.render(in: context)
+        guard let image = context.makeImage() else { return nil }
         return (image, bounds.size)
     }
 }

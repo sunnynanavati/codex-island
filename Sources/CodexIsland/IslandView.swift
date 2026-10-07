@@ -6,6 +6,7 @@ struct IslandView: View {
     var reduceMotionOverride: Bool? = nil
     var increasedContrastOverride: Bool? = nil
     var cubeFrozenOverride: Bool? = nil
+    var nativeSurface = false
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.colorSchemeContrast) private var systemContrast
     private var reduceMotion: Bool { reduceMotionOverride ?? systemReduceMotion }
@@ -69,8 +70,8 @@ struct IslandView: View {
             .clipped()
         }
         .frame(width: motion.frame.width, height: motion.frame.height, alignment: .top)
-        .background(Color.black)
-        .clipShape(islandShape)
+        .background(nativeSurface ? Color.clear : Color.black)
+        .clipShape(nativeSurface ? AnyShape(Rectangle()) : AnyShape(islandShape))
         .overlay(alignment: .bottom) {
             if increasedContrast && model.presentation != .compact {
                 islandShape
@@ -80,6 +81,8 @@ struct IslandView: View {
         }
         .preferredColorScheme(.dark)
         .tint(model.preferences.values.accent.color)
+        // Keep the rail attached to the screen edge while AppKit resizes ahead of a SwiftUI layout pass.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var statusRail: some View {
