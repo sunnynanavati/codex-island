@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Simplified island toolbar: History and Collapse, without branding or a refresh icon.
+- Monochrome quota footer with a red warning below 25% remaining.
+
 ## 0.2.0 — local release preparation
 
 - Separate native Settings window and menu-bar app lifecycle.

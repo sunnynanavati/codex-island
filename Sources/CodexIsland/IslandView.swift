@@ -216,12 +216,13 @@ struct IslandView: View {
             if model.page != .activity {
                 iconButton("chevron.left", "Back to activity") { model.page = .activity }
             }
-            Text(pageTitle).font(.system(size: 12, weight: .semibold))
+            if model.page != .activity {
+                Text(pageTitle).font(.system(size: 12, weight: .semibold))
+            }
             Spacer()
             if model.page == .activity {
                 iconButton("clock", "Recent tasks") { model.page = .recent }
             }
-            iconButton("arrow.clockwise", "Refresh tasks") { Task { await model.refresh() } }
             iconButton("chevron.up", "Collapse island") { model.dismiss() }
         }
         .padding(.horizontal, 14).frame(height: 40)
@@ -360,12 +361,12 @@ struct IslandView: View {
                             .foregroundStyle(IslandDesign.secondary)
                         Spacer()
                         Text("\(Int(quota.remainingPercent))% remaining")
-                            .foregroundStyle(IslandDesign.quotaColor(quota))
+                            .foregroundStyle(IslandDesign.quotaFooterColor(quota))
                             .monospacedDigit().contentTransition(.numericText())
                     }.font(.system(size: 11, weight: .medium))
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color.white.opacity(0.14))
-                        Capsule().fill(IslandDesign.quotaColor(quota))
+                        Capsule().fill(IslandDesign.quotaFooterColor(quota))
                             .scaleEffect(x: quota.remainingPercent / 100, y: 1, anchor: .leading)
                     }
                     .frame(height: 4)

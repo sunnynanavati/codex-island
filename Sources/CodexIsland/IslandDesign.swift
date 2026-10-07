@@ -34,6 +34,14 @@ enum IslandDesign {
         }
     }
 
+    static func quotaFooterColor(_ quota: QuotaWindow?) -> Color {
+        switch QuotaSeverity(quota: quota) {
+        case .unavailable: secondary
+        case .critical: red
+        case .normal, .warning: .white
+        }
+    }
+
     static func color(_ state: ActivityState) -> Color {
         if state == .failed { return red }
         if state.needsAttention { return amber }
