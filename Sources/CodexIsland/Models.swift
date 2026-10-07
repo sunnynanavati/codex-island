@@ -92,7 +92,7 @@ struct TaskSnapshot: Codable, Equatable, Sendable, Identifiable {
         ).replacingOccurrences(of: #"\s*```\s*$"#, with: "", options: .regularExpression)
         let line = withoutFence.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return String((line.isEmpty ? "Untitled Codex task" : line).prefix(100))
+        return line.isEmpty ? "Untitled Codex task" : line
     }
 }
 

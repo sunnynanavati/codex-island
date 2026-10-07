@@ -229,6 +229,7 @@ struct IslandView: View {
         case .activity: "Codex"
         case .recent: "Recent tasks"
         case .question: "Your input"
+        case .task: "Task details"
         }
     }
 
@@ -245,6 +246,14 @@ struct IslandView: View {
                 Text("This question has been resolved.").font(.system(size: 14, weight: .medium))
                 action("Back to activity", symbol: "arrow.left") { model.page = .activity }
             }
+        case let .task(id):
+            if let task = model.snapshot.tasks.first(where: { $0.id == id }) {
+                taskDetails(task)
+            } else {
+                Text("This task is no longer available. Return to activity or refresh to check again.")
+                    .font(.system(size: 12)).foregroundStyle(IslandDesign.secondary)
+                action("Back to activity", symbol: "arrow.left") { model.page = .activity }
+            }
         }
     }
 
@@ -255,6 +264,7 @@ struct IslandView: View {
                     Text(primary.cleanedTitle)
                         .font(.system(size: 19, weight: .semibold)).lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
+                    action("Task details", symbol: "text.alignleft") { model.page = .task(primary.id) }
                     HStack(spacing: 6) {
                         Image(systemName: "folder").accessibilityHidden(true)
                         Text(primary.workspaceName).lineLimit(1)
@@ -296,6 +306,7 @@ struct IslandView: View {
     }
 
     private func taskRow(_ task: TaskSnapshot) -> some View {
+        HStack(spacing: 4) {
         IslandButton(motionEnabled: model.animationsEnabled, action: {
             if task.pendingQuestion != nil { model.page = .question(task.id) }
             else { model.openCodex(taskID: task.id) }
@@ -316,6 +327,27 @@ struct IslandView: View {
             .padding(.horizontal, 8).frame(height: 48).contentShape(Rectangle())
         }
         .accessibilityLabel("\(task.cleanedTitle), \(task.workspaceName), \(task.state.label)")
+        iconButton("text.alignleft", "Show task details") { model.page = .task(task.id) }
+        }
+    }
+
+    private func taskDetails(_ task: TaskSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(task.cleanedTitle)
+                .font(.system(size: 19, weight: .semibold))
+                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            Label(task.state.label, systemImage: IslandDesign.symbol(task.state))
+                .font(.system(size: 12, weight: .medium)).foregroundStyle(statusColor(task.state))
+            Text(task.workspacePath ?? "Unknown workspace")
+                .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
+                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            Text(task.updatedAt.formatted(.relative(presentation: .named)))
+                .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
+            if task.pendingQuestion != nil {
+                action("View question", symbol: "questionmark.bubble") { model.page = .question(task.id) }
+            }
+            action("Open Codex", symbol: "arrow.up.right") { model.openCodex(taskID: task.id) }
+        }
     }
 
     private var footer: some View {

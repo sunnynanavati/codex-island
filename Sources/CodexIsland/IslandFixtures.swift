@@ -13,6 +13,9 @@ enum IslandFixtures {
         }
         var tasks = [task("primary", "Refine the details. Make every interaction feel natural.", .thinking)]
         if name == "idle" { tasks = [] }
+        if name == "long-title" {
+            tasks[0].title = "Refine the native island experience with stable chat companions, precise typography, graceful transitions, and recoverable local task details without losing any part of a long task title."
+        }
         if name == "multiple" {
             tasks += [task("two", "Build the native settings experience", .editing),
                       task("three", "Check keyboard and VoiceOver navigation", .reading),
@@ -57,6 +60,7 @@ enum IslandPreviewRenderer {
                            ("compact-unavailable", "unavailable", .compact, .activity),
                            ("preview", "active", .preview, .activity),
                            ("recent", "active", .pinned, .recent),
+                           ("task-details", "long-title", .pinned, .task("primary")),
                            ("reduced-motion", "active", .pinned, .activity), ("high-contrast", "active", .pinned, .activity)]
         var images: [(String, NSImage)] = []
         for (filename, scenario, stage, page) in specifications {
