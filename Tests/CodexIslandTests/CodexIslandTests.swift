@@ -857,7 +857,7 @@ final class CodexIslandTests: XCTestCase {
                                           shoulderBlend: blend)
             XCTAssertEqual(path.boundingBoxOfPath, CGRect(origin: .zero, size: size))
             // Broad shoulder joins the top; transparent area below it passes clicks through.
-            XCTAssertTrue(IslandHitRegion.contains(.init(x: 20, y: height - 0.25), size: size,
+            XCTAssertTrue(IslandHitRegion.contains(.init(x: 20, y: height - 0.025), size: size,
                                                    radius: radius, shoulderReach: 100,
                                                    shoulderHeight: shoulderHeight, shoulderBlend: blend))
             XCTAssertFalse(IslandHitRegion.contains(.init(x: 25, y: height - 10), size: size,

@@ -289,11 +289,12 @@ enum IslandContour {
             let t2 = t * t, t3 = t2 * t
             let wave = t3 * (10 + t * (-15 + 6 * t))
             let waveSlope = 30 * t2 * (1 - t) * (1 - t)
-            let u = 1 - t
-            let expandedX = 3 * u * u * t * k + 3 * u * t2 + t3
-            let expandedY = 3 * u * t2 * (1 - k) + t3
-            let dx = 3 * u * u * k + 6 * u * t * (1 - k)
-            let dy = 6 * u * t * (1 - k) + 3 * t2 * k
+            // Integrate complementary smoothsteps: curvature settles to zero
+            // where the shoulder joins the screen edge and the vertical wall.
+            let expandedX = 2 * t - 2 * t3 + t3 * t
+            let expandedY = 2 * t3 - t3 * t
+            let dx = 2 - 6 * t2 + 4 * t3
+            let dy = 6 * t2 - 4 * t3
             return (CGPoint(x: w - s * ((1 - blend) * t + blend * expandedX),
                             y: d * ((1 - blend) * wave + blend * expandedY)),
                     CGPoint(x: -s * ((1 - blend) + blend * dx),

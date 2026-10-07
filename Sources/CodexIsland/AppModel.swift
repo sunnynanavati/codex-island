@@ -68,7 +68,7 @@ final class AppModel: ObservableObject {
     private var lastExpandedBodyHeight: CGFloat?
     var expandedBodyHeight: CGFloat {
         page == .activity && snapshot.primaryTask == nil && snapshot.errorMessage == nil &&
-            !snapshot.tasks.contains(where: { $0.state.isActive || $0.state.needsAttention }) ? 302 : 442
+            !snapshot.tasks.contains(where: { $0.state.isActive || $0.state.needsAttention }) ? 222 : 398
     }
     var compactLabel: String {
         rail.label ?? ""

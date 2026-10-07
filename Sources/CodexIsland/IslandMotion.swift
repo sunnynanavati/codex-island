@@ -63,7 +63,10 @@ final class IslandMotionCoordinator: NSObject, ObservableObject {
         let t = min(1, max(0, (progress - 0.2) / 0.6))
         let blend = t * t * (3 - 2 * t)
         let fullDepth = max(layout.compactFrame.height, frame.height - cornerRadius)
-        return fullDepth + (layout.compactFrame.height - fullDepth) * blend
+        let pinned = min(1, max(0, progress - 1))
+        let pinnedBlend = pinned * pinned * (3 - 2 * pinned)
+        let settledDepth = layout.compactFrame.height * (1 + 0.5 * pinnedBlend)
+        return fullDepth + (settledDepth - fullDepth) * blend
     }
 
     init(layout: IslandLayout) {

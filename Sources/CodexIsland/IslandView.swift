@@ -218,6 +218,8 @@ struct IslandView: View {
             }
             if model.page != .activity {
                 Text(pageTitle).font(.system(size: 12, weight: .semibold))
+            } else if primary == nil {
+                Text("All quiet.").font(.system(size: 21, weight: .semibold))
             }
             Spacer()
             if model.page == .activity {
@@ -225,7 +227,7 @@ struct IslandView: View {
             }
             iconButton("chevron.up", "Collapse island") { model.dismiss() }
         }
-        .padding(.horizontal, 14).frame(height: 40)
+        .padding(.leading, 20).padding(.trailing, 14).frame(height: 40)
     }
 
     private var pageTitle: String {
@@ -292,8 +294,6 @@ struct IslandView: View {
                         model.page = .question(primary.id)
                     }
                 }
-            } else {
-                Text("All quiet.").font(.system(size: 21, weight: .semibold))
             }
             dailySummary
             let others = model.snapshot.tasks.filter {
@@ -381,12 +381,6 @@ struct IslandView: View {
             } else {
                 Text("Quota unavailable").font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            HStack {
-                Text(model.snapshot.refreshedAt == .distantPast ? "Waiting for data" : "Updated \(model.snapshot.refreshedAt.formatted(date: .omitted, time: .shortened))")
-                    .font(.system(size: 10)).foregroundStyle(IslandDesign.secondary)
-                Spacer()
-                action("Open Codex", symbol: "arrow.up.right") { model.openCodex() }
             }
         }
         .padding(.horizontal, 20).padding(.bottom, 16)

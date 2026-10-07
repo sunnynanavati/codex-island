@@ -3,21 +3,42 @@ import XCTest
 @testable import CodexIsland
 
 final class TrayPolishTests: XCTestCase {
+    @MainActor func testPinnedShoulderEasesDeeperWithoutChangingCompactOrHoverDepth() {
+        let layout = IslandLayout.calculate(screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+                                            safeTopInset: 32, leftAuxiliaryMaxX: 666, rightAuxiliaryMinX: 846,
+                                            calibration: .init(waveReach: 61))
+        let motion = IslandMotionCoordinator(layout: layout)
+        XCTAssertEqual(motion.shoulderHeight, 32)
+        motion.update(layout: layout, state: .preview, policy: .immediate)
+        XCTAssertEqual(motion.shoulderHeight, 32)
+        motion.update(layout: layout, state: .pinned, policy: .full)
+        let start = motion.shoulderHeight
+        motion.advance(by: 1.0 / 60)
+        XCTAssertGreaterThan(motion.shoulderHeight, start)
+        XCTAssertLessThan(motion.shoulderHeight, 48)
+        for _ in 0..<180 { motion.advance(by: 1.0 / 60) }
+        XCTAssertEqual(motion.shoulderHeight, 48)
+        XCTAssertFalse(motion.isRunning)
+        motion.update(layout: layout, state: .compact, policy: .immediate)
+        XCTAssertEqual(motion.shoulderHeight, 32)
+        XCTAssertEqual(motion.layout.compactShoulderReach, 61)
+    }
+
     @MainActor func testOnlyEmptyActivityPageUsesShortHeight() {
         let model = AppModel(fixture: IslandFixtures.snapshot("idle"))
-        XCTAssertEqual(model.expandedBodyHeight, 302)
+        XCTAssertEqual(model.expandedBodyHeight, 222)
         var updates = 0
         model.onLayoutChange = { updates += 1 }
         model.page = .recent
-        XCTAssertEqual(model.expandedBodyHeight, 442)
+        XCTAssertEqual(model.expandedBodyHeight, 398)
         XCTAssertEqual(updates, 1)
         model.page = .activity
         for scenario in ["active", "multiple", "attention", "failed", "error"] {
             model.setFixture(IslandFixtures.snapshot(scenario))
-            XCTAssertEqual(model.expandedBodyHeight, 442, scenario)
+            XCTAssertEqual(model.expandedBodyHeight, 398, scenario)
         }
         model.setFixture(IslandFixtures.snapshot("idle"))
-        XCTAssertEqual(model.expandedBodyHeight, 302)
+        XCTAssertEqual(model.expandedBodyHeight, 222)
     }
 
     func testDailySummaryUsesCompletedTurnsAndReadableDuration() {
@@ -45,7 +66,7 @@ final class TrayPolishTests: XCTestCase {
                                    railGeometry: .init(cubeWidth: 22, statusWidth: 22, clearance: 12),
                                    expandedBodyHeight: height)
         }
-        let full = layout(442), idle = layout(302)
+        let full = layout(398), idle = layout(222)
         let motion = IslandMotionCoordinator(layout: full)
         motion.update(layout: full, state: .pinned, policy: .immediate)
         motion.update(layout: idle, state: .pinned, policy: .full)
