@@ -15,7 +15,7 @@ struct CompactQuotaState: Equatable {
         let remaining = quota.remainingPercent
         percentage = Int(remaining.rounded(.down))
         fraction = remaining / 100
-        isCritical = remaining < 25
+        isCritical = QuotaSeverity(quota: quota) == .critical
     }
 
     var displayText: String { percentage.map(String.init) ?? "–" }

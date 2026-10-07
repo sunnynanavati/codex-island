@@ -364,12 +364,12 @@ struct IslandView: View {
                         }
                         Spacer()
                         Text("\(Int(quota.remainingPercent))% remaining")
-                            .foregroundStyle(quota.remainingPercent < 15 ? IslandDesign.red : quota.remainingPercent < 40 ? IslandDesign.amber : IslandDesign.green)
+                            .foregroundStyle(IslandDesign.quotaColor(quota))
                             .monospacedDigit().contentTransition(.numericText())
                     }.font(.system(size: 11, weight: .medium))
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color.white.opacity(0.14))
-                        Capsule().fill(quota.remainingPercent < 15 ? IslandDesign.red : quota.remainingPercent < 40 ? IslandDesign.amber : IslandDesign.green)
+                        Capsule().fill(IslandDesign.quotaColor(quota))
                             .scaleEffect(x: quota.remainingPercent / 100, y: 1, anchor: .leading)
                     }
                     .frame(height: 4)

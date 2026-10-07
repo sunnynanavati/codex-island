@@ -25,6 +25,15 @@ enum IslandDesign {
     static let statusFadeDuration = 0.18
     static let pressDuration = 0.12
 
+    static func quotaColor(_ quota: QuotaWindow?) -> Color {
+        switch QuotaSeverity(quota: quota) {
+        case .unavailable: secondary
+        case .normal: green
+        case .warning: amber
+        case .critical: red
+        }
+    }
+
     static func color(_ state: ActivityState) -> Color {
         if state == .failed { return red }
         if state.needsAttention { return amber }

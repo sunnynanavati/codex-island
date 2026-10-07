@@ -59,6 +59,22 @@ struct QuotaWindow: Codable, Equatable, Sendable {
     }
 }
 
+enum QuotaSeverity: Equatable {
+    case unavailable, normal, warning, critical
+
+    init(quota: QuotaWindow?) {
+        guard let quota, quota.usedPercent.isFinite else {
+            self = .unavailable
+            return
+        }
+        switch quota.remainingPercent {
+        case ..<25: self = .critical
+        case ..<40: self = .warning
+        default: self = .normal
+        }
+    }
+}
+
 struct ActivityInterval: Codable, Equatable, Sendable {
     var start: Date
     var end: Date?
