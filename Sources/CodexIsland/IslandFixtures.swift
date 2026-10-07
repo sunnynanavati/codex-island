@@ -43,7 +43,7 @@ enum IslandFixtures {
                               quota: name == "unavailable" ? nil : .init(usedPercent: name == "critical-quota" ? 80 : 26,
                                                                           windowMinutes: 10080, resetAt: now.addingTimeInterval(86400)),
                               refreshedAt: now,
-                              errorMessage: name == "error" ? "Codex data is temporarily unavailable. Showing the last successful update." : nil)
+                              errorMessage: name == "error" ? "Codex data is temporarily unavailable. Showing the last successful update. Refresh to retry; if this persists, reopen Codex and refresh again." : nil)
     }
 }
 

@@ -6,8 +6,10 @@ enum CodexDataError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .databaseMissing: "Codex state database was not found. Open Codex once, then refresh."
-        case .noCompatibleTable: "No compatible task table was found in the Codex state database."
-        case let .database(message): "Could not read Codex state: \(message)"
+        case .noCompatibleTable:
+            "This Codex task database format is not supported. Check for Codex and Codex Island updates, then reopen Codex and refresh. If this persists, report the compatibility issue; do not delete the database."
+        case let .database(message):
+            "Could not read Codex tasks. Refresh to retry. If this persists, reopen Codex and refresh again. Details: \(message)"
         }
     }
 }
