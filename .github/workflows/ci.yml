@@ -1,0 +1,20 @@
+name: Validate macOS app
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        run: swift test
+      - name: Build and package local artifact
+        run: bash scripts/package-release.sh
+      - name: Audit source export
+        run: bash scripts/export-source.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Codex-Island-local-unnotarized
+          path: dist/*.dmg
+          retention-days: 7

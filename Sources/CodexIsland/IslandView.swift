@@ -1,0 +1,403 @@
+import SwiftUI
+
+struct IslandView: View {
+    @ObservedObject var model: AppModel
+    @ObservedObject var motion: IslandMotionCoordinator
+    var reduceMotionOverride: Bool? = nil
+    var increasedContrastOverride: Bool? = nil
+    var cubeFrozenOverride: Bool? = nil
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    @Environment(\.colorSchemeContrast) private var systemContrast
+    private var reduceMotion: Bool { reduceMotionOverride ?? systemReduceMotion }
+    private var increasedContrast: Bool { increasedContrastOverride ?? (systemContrast == .increased) }
+
+    private var rule: Color { .white.opacity(increasedContrast ? 0.45 : 0.12) }
+    private var labelAnimation: Animation? {
+        model.animationsEnabled ? .easeOut(duration: IslandDesign.labelDuration) : nil
+    }
+    private var primary: TaskSnapshot? { model.snapshot.primaryTask }
+    private var topHeight: CGFloat { motion.layout.compactFrame.height }
+    private var bodyWidth: CGFloat { motion.layout.bodyWidth(at: motion.progress) }
+    private var islandShape: IslandShape {
+        IslandShape(radius: motion.cornerRadius, shoulderReach: motion.layout.shoulderReach(at: motion.progress),
+                    shoulderHeight: motion.shoulderHeight,
+                    shoulderBlend: min(1, max(0, motion.progress)))
+    }
+    private var compactLabel: String { model.compactLabel }
+    private func statusColor(_ state: ActivityState) -> Color {
+        state.isActive && !state.needsAttention ? model.preferences.values.accent.color : IslandDesign.color(state)
+    }
+    private var previewOpacity: Double {
+        IslandContentReveal.previewOpacity(motion.progress, eligible: motion.previewContentEligible)
+    }
+    private var expandedOpacity: Double {
+        IslandContentReveal.expandedOpacity(motion.progress,
+                                            previewEligible: motion.previewContentEligible)
+    }
+    private var expandedInteractive: Bool {
+        model.presentation == .pinned && expandedOpacity >= 0.95
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            statusRail
+                .frame(width: bodyWidth, height: topHeight)
+                .frame(width: motion.frame.width)
+                .opacity(motion.contentOpacity)
+            ZStack(alignment: .top) {
+                preview
+                    .frame(width: motion.layout.previewFrame.width - 2 * motion.layout.shoulderReach,
+                           height: 116, alignment: .top)
+                    .offset(y: IslandContentReveal.previewYOffset(motion.progress, opacity: previewOpacity,
+                                                                   movementAllowed: model.animationsEnabled && !reduceMotion))
+                    .opacity(previewOpacity)
+                    .allowsHitTesting(model.presentation == .preview)
+                    .accessibilityHidden(model.presentation != .preview || previewOpacity < 0.95)
+                    .disabled(model.presentation != .preview)
+                expanded
+                    .frame(width: motion.layout.expandedFrame.width - 2 * motion.layout.shoulderReach,
+                           height: motion.layout.expandedFrame.height - topHeight)
+                    .offset(y: IslandContentReveal.expandedYOffset(opacity: expandedOpacity,
+                                                                    movementAllowed: model.animationsEnabled && !reduceMotion))
+                    .opacity(expandedOpacity)
+                    .allowsHitTesting(expandedInteractive)
+                    .accessibilityHidden(!expandedInteractive)
+                    .disabled(!expandedInteractive)
+            }
+            .frame(width: motion.frame.width, height: max(0, motion.frame.height - topHeight), alignment: .top)
+            .opacity(motion.contentOpacity)
+            .clipped()
+        }
+        .frame(width: motion.frame.width, height: motion.frame.height, alignment: .top)
+        .background(Color.black)
+        .clipShape(islandShape)
+        .overlay(alignment: .bottom) {
+            if increasedContrast && model.presentation != .compact {
+                islandShape
+                    .stroke(rule, lineWidth: 1)
+                    .clipShape(islandShape).allowsHitTesting(false)
+            }
+        }
+        .preferredColorScheme(.dark)
+        .tint(model.preferences.values.accent.color)
+    }
+
+    private var statusRail: some View {
+        let wing = max(22, (bodyWidth - model.notchGap) / 2)
+        let geometry = motion.layout.railGeometry ?? RailGeometry(cubeWidth: 22, statusWidth: 20, clearance: 12)
+        let available = max(22, wing - 2 * geometry.clearance)
+        let count = CubeTimeline.visibleCount(total: model.cubes.count, wingWidth: available)
+        let measured = PanelController.railGeometry(cubeCount: model.cubes.count, label: model.rail.label,
+                                                   typography: model.typography, preferences: model.preferences.values,
+                                                   displayScale: 24 / geometry.clearance)
+        let ringWidth = CompactQuotaRing.diameter + model.preferences.values.ringStroke
+        let textWidth = max(0, measured.statusWidth - ringWidth - model.preferences.values.statusGap)
+        let displayedGroup = max(ringWidth, min(geometry.statusWidth, available))
+        let labelOpacity = model.rail.label == nil ? 0 : RailGeometry.statusOpacity(
+            availableWing: wing, displayedGroup: displayedGroup,
+            requiredGroup: measured.statusWidth, clearance: geometry.clearance)
+        return Button { model.clickIsland() } label: {
+            HStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    ForEach(Array(model.cubes.prefix(count))) { cube in
+                        Group {
+                            if model.glyphTheme == .cube {
+                                CubeCompanion(descriptor: cube,
+                                              paused: reduceMotion || !model.animationsEnabled || !model.preferences.values.cubeAnimationsEnabled || !model.preferences.values.showIsland,
+                                              frozen: cubeFrozenOverride ?? model.isFixture)
+                            } else {
+                                Image(systemName: IslandDesign.symbol(cube.state))
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundStyle(statusColor(cube.state))
+                                    .contentTransition(.opacity)
+                            }
+                        }
+                        .frame(width: 22, height: 22)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(cube.title), \(cube.state.label)")
+                    }
+                    if model.cubes.count > count {
+                        Text("+\(model.cubes.count - count)")
+                            .font(.system(size: 9, weight: .semibold)).monospacedDigit()
+                            .foregroundStyle(IslandDesign.secondary)
+                    }
+                }
+                .frame(width: wing)
+                Color.clear.frame(width: model.notchGap)
+                ZStack(alignment: .trailing) {
+                    if model.rail.label != nil {
+                        CompactStatusFlip(label: compactLabel,
+                                          font: IslandFont.font(weight: model.typography.statusWeight,
+                                                                size: model.typography.statusSize,
+                                                                family: model.preferences.values.fontFamily),
+                                          motionEnabled: model.animationsEnabled,
+                                          reduceMotion: reduceMotion,
+                                          style: model.preferences.values.statusTransition,
+                                          duration: model.preferences.values.statusDuration,
+                                          blur: model.preferences.values.statusBlur)
+                            .frame(width: textWidth)
+                            .offset(x: -ringWidth - model.preferences.values.statusGap)
+                            .opacity(labelOpacity)
+                    }
+                    CompactQuotaRing(quota: model.snapshot.quota,
+                                         animationsEnabled: model.animationsEnabled,
+                                         increasedContrast: increasedContrast,
+                                         typography: model.typography,
+                                         fontFamily: model.preferences.values.fontFamily,
+                                         ringStroke: model.preferences.values.ringStroke)
+                            .fixedSize()
+                }
+                .frame(width: displayedGroup, alignment: .trailing)
+                .frame(width: wing)
+            }
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Codex Island, \(model.rail.accessibleStatus), \(CompactQuotaState(quota: model.snapshot.quota).accessibilityLabel). Open task details")
+    }
+
+    private var preview: some View {
+        Button { model.clickIsland() } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(primary?.cleanedTitle ?? "All quiet. Ready when you are.")
+                    .font(.system(size: 15, weight: .semibold)).lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 6) {
+                    if let primary {
+                        Text(primary.workspaceName).lineLimit(1)
+                        Text("·")
+                        Text(primary.state.label).foregroundStyle(statusColor(primary.state)).lineLimit(1)
+                    } else { Text("Waiting for Codex activity") }
+                    Spacer(minLength: 0)
+                }
+                .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
+                HStack {
+                    Text("\(model.snapshot.activeAgentCount) active · \(model.snapshot.attentionCount) attention")
+                    Spacer()
+                    Image(systemName: "arrow.down.right.and.arrow.up.left").rotationEffect(.degrees(180))
+                }
+                .font(.system(size: 10, weight: .medium)).foregroundStyle(IslandDesign.secondary)
+            }
+            .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Click to pin the expanded island")
+    }
+
+    private var expanded: some View {
+        VStack(spacing: 0) {
+            toolbar
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let error = model.snapshot.errorMessage {
+                        Label(error, systemImage: "exclamationmark.triangle")
+                            .font(.system(size: 11)).foregroundStyle(IslandDesign.amber)
+                            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                            .background(IslandDesign.surface, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    pageContent
+                }
+                .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollIndicators(.automatic)
+            .animation(labelAnimation, value: model.page)
+            footer
+        }
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 4) {
+            if model.page != .activity {
+                iconButton("chevron.left", "Back to activity") { model.page = .activity }
+            }
+            Text(pageTitle).font(.system(size: 12, weight: .semibold))
+            Spacer()
+            if model.page == .activity {
+                iconButton("clock", "Recent tasks") { model.page = .recent }
+            }
+            iconButton("arrow.clockwise", "Refresh tasks") { Task { await model.refresh() } }
+            iconButton("chevron.up", "Collapse island") { model.dismiss() }
+        }
+        .padding(.horizontal, 14).frame(height: 40)
+    }
+
+    private var pageTitle: String {
+        switch model.page {
+        case .activity: "Codex"
+        case .recent: "Recent tasks"
+        case .question: "Your input"
+        }
+    }
+
+    @ViewBuilder private var pageContent: some View {
+        switch model.page {
+        case .activity: activityPage
+        case .recent:
+            if model.snapshot.recentTasks.isEmpty { Text("No recent tasks").foregroundStyle(IslandDesign.secondary) }
+            ForEach(model.snapshot.recentTasks) { taskRow($0) }
+        case let .question(id):
+            if let task = model.snapshot.tasks.first(where: { $0.id == id }), let question = task.pendingQuestion {
+                questionPage(question, task: task)
+            } else {
+                Text("This question has been resolved.").font(.system(size: 14, weight: .medium))
+                action("Back to activity", symbol: "arrow.left") { model.page = .activity }
+            }
+        }
+    }
+
+    private var activityPage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let primary {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(primary.cleanedTitle)
+                        .font(.system(size: 19, weight: .semibold)).lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder").accessibilityHidden(true)
+                        Text(primary.workspaceName).lineLimit(1)
+                        Spacer()
+                        Text(primary.updatedAt.formatted(.relative(presentation: .named))).lineLimit(1)
+                    }
+                    .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
+                    HStack(spacing: 6) {
+                        Label(primary.state.label, systemImage: IslandDesign.symbol(primary.state))
+                            .foregroundStyle(statusColor(primary.state))
+                            .contentTransition(.opacity)
+                        Spacer()
+                        Text("\(model.snapshot.activeAgentCount) active · \(model.snapshot.attentionCount) attention")
+                            .foregroundStyle(IslandDesign.secondary)
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .animation(labelAnimation, value: primary.state)
+                }
+                if let question = primary.pendingQuestion {
+                    action(question.header + " · Answer in Codex", symbol: "questionmark.bubble") {
+                        model.page = .question(primary.id)
+                    }
+                }
+            } else {
+                Text("All quiet.").font(.system(size: 21, weight: .semibold))
+                Text("Your next Codex task will appear here.")
+                    .font(.system(size: 12)).foregroundStyle(IslandDesign.secondary)
+            }
+            Text("Today  \(model.snapshot.dailyStats.completedTurns) turns  ·  \(IslandDesign.duration(model.snapshot.dailyStats.activeDuration)) active")
+                .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary).monospacedDigit()
+            let others = model.snapshot.tasks.filter {
+                $0.id != model.snapshot.primaryTaskID && ($0.state.isActive || $0.state.needsAttention)
+            }
+            if !others.isEmpty {
+                rule.frame(height: 1)
+                ForEach(others) { taskRow($0) }
+            }
+        }
+    }
+
+    private func taskRow(_ task: TaskSnapshot) -> some View {
+        IslandButton(motionEnabled: model.animationsEnabled, action: {
+            if task.pendingQuestion != nil { model.page = .question(task.id) }
+            else { model.openCodex(taskID: task.id) }
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: IslandDesign.symbol(task.state))
+                    .font(.system(size: 13)).foregroundStyle(statusColor(task.state))
+                    .frame(width: 18).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(task.cleanedTitle).font(.system(size: 12, weight: .medium)).lineLimit(1)
+                    Text("\(task.workspaceName) · \(task.state.label) · \(task.updatedAt.formatted(.relative(presentation: .named)))")
+                        .font(.system(size: 10)).foregroundStyle(IslandDesign.secondary).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: task.pendingQuestion != nil ? "chevron.right" : "arrow.up.right")
+                    .font(.system(size: 9)).foregroundStyle(IslandDesign.secondary).accessibilityHidden(true)
+            }
+            .padding(.horizontal, 8).frame(height: 48).contentShape(Rectangle())
+        }
+        .accessibilityLabel("\(task.cleanedTitle), \(task.workspaceName), \(task.state.label)")
+    }
+
+    private var footer: some View {
+        VStack(spacing: 12) {
+            rule.frame(height: 1)
+            if let quota = model.snapshot.quota {
+                VStack(spacing: 6) {
+                    HStack {
+                        Text(quota.windowMinutes >= 1440 ? "\(quota.windowMinutes / 1440)-day quota" : "\(quota.windowMinutes / 60)-hour quota")
+                            .foregroundStyle(IslandDesign.secondary)
+                        if let checked = quota.observedAt {
+                            Text("· checked \(checked.formatted(date: .omitted, time: .shortened))")
+                                .foregroundStyle(IslandDesign.secondary)
+                        }
+                        Spacer()
+                        Text("\(Int(quota.remainingPercent))% remaining")
+                            .foregroundStyle(quota.remainingPercent < 15 ? IslandDesign.red : quota.remainingPercent < 40 ? IslandDesign.amber : IslandDesign.green)
+                            .monospacedDigit().contentTransition(.numericText())
+                    }.font(.system(size: 11, weight: .medium))
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.white.opacity(0.14))
+                        Capsule().fill(quota.remainingPercent < 15 ? IslandDesign.red : quota.remainingPercent < 40 ? IslandDesign.amber : IslandDesign.green)
+                            .scaleEffect(x: quota.remainingPercent / 100, y: 1, anchor: .leading)
+                    }
+                    .frame(height: 4)
+                    .animation(labelAnimation, value: quota.remainingPercent)
+                    .accessibilityLabel("\(Int(quota.remainingPercent)) percent of quota remaining")
+                    if let reset = quota.resetAt {
+                        Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.system(size: 10)).foregroundStyle(IslandDesign.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            } else {
+                Text("Quota unavailable").font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            HStack {
+                Text(model.snapshot.refreshedAt == .distantPast ? "Waiting for data" : "Updated \(model.snapshot.refreshedAt.formatted(date: .omitted, time: .shortened))")
+                    .font(.system(size: 10)).foregroundStyle(IslandDesign.secondary)
+                Spacer()
+                action("Open Codex", symbol: "arrow.up.right") { model.openCodex() }
+            }
+        }
+        .padding(.horizontal, 20).padding(.bottom, 16)
+    }
+
+    private func questionPage(_ question: PendingQuestion, task: TaskSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(question.header).font(.system(size: 18, weight: .semibold))
+            Text(question.prompt).font(.system(size: 13))
+            Text("Select an option to open Codex, where you can submit your answer.")
+                .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
+            ForEach(question.choices) { choice in
+                IslandButton(motionEnabled: model.animationsEnabled, action: { model.openCodex(taskID: task.id) }) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(choice.label).font(.system(size: 12, weight: .semibold))
+                        Text(choice.description).font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                    .background(IslandDesign.surface, in: RoundedRectangle(cornerRadius: 10))
+                }
+            }
+            action("Other… in Codex", symbol: "arrow.up.right") { model.openCodex(taskID: task.id) }
+        }
+    }
+
+    private func iconButton(_ symbol: String, _ label: String, action: @escaping () -> Void) -> some View {
+        IslandButton(motionEnabled: model.animationsEnabled,
+                     focusRequested: expandedInteractive &&
+                        ((label == "Recent tasks" && model.page == .activity) || label == "Back to activity"),
+                     action: action) {
+            Image(systemName: symbol).font(.system(size: 11, weight: .medium))
+                .foregroundStyle(IslandDesign.secondary).frame(width: 30, height: 30).contentShape(Rectangle())
+        }.accessibilityLabel(label).help(label)
+    }
+
+    private func action(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        IslandButton(motionEnabled: model.animationsEnabled, action: action) {
+            HStack(spacing: 8) { Text(title); Image(systemName: symbol).font(.system(size: 10)) }
+                .font(.system(size: 11, weight: .medium)).padding(.horizontal, 12).frame(height: 32)
+                .background(IslandDesign.surface, in: RoundedRectangle(cornerRadius: 9))
+        }
+    }
+}

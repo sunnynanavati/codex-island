@@ -1,0 +1,15 @@
+# Changelog
+
+## 0.2.0 — local release preparation
+
+- Separate native Settings window and menu-bar app lifecycle.
+- Appearance, layout, motion, and local preset customization.
+- Installable Apple-silicon app and drag-to-Applications disk image.
+- Optional login startup replaces the development LaunchAgent.
+- Development/release preference separation, packaging validation, and contributor documentation.
+
+This milestone is a local, ad-hoc-signed build. Public signing, notarization, and clean-Mac acceptance remain release gates.
+
+## 0.1.0 — local prototype
+
+- Read-only local task tracking, stable per-chat cube companions, notch-aware panels, incremental rollout parsing, and live account quota.
