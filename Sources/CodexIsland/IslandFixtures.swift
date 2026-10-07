@@ -59,6 +59,7 @@ enum IslandPreviewRenderer {
                            ("compact-critical", "critical-quota", .compact, .activity),
                            ("compact-unavailable", "unavailable", .compact, .activity),
                            ("preview", "active", .preview, .activity),
+                           ("preview-idle", "idle", .preview, .activity),
                            ("recent", "active", .pinned, .recent),
                            ("task-details", "long-title", .pinned, .task("primary")),
                            ("reduced-motion", "active", .pinned, .activity), ("high-contrast", "active", .pinned, .activity)]

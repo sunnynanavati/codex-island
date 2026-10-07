@@ -163,18 +163,18 @@ struct IslandView: View {
     private var preview: some View {
         Button { model.clickIsland() } label: {
             VStack(alignment: .leading, spacing: 8) {
-                Text(primary?.cleanedTitle ?? "All quiet. Ready when you are.")
+                Text(primary?.cleanedTitle ?? "All quiet.")
                     .font(.system(size: 15, weight: .semibold)).lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                HStack(spacing: 6) {
-                    if let primary {
+                if let primary {
+                    HStack(spacing: 6) {
                         Text(primary.workspaceName).lineLimit(1)
                         Text("·")
                         Text(primary.state.label).foregroundStyle(statusColor(primary.state)).lineLimit(1)
-                    } else { Text("Waiting for Codex activity") }
-                    Spacer(minLength: 0)
+                        Spacer(minLength: 0)
+                    }
+                    .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
                 }
-                .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
                 HStack {
                     Text("\(model.snapshot.activeChatSummary) · \(model.snapshot.attentionCount) attention")
                     Spacer()
