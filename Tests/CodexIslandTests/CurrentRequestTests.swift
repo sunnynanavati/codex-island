@@ -64,4 +64,17 @@ final class CurrentRequestTests: XCTestCase {
         XCTAssertEqual(TrayShimmer.phase(at: 3.125), 0.25)
         XCTAssertEqual(TrayShimmer.phase(at: .nan), 0)
     }
+
+    func testEveryWorkingLabelUsesTheSameShimmerPolicyAndCompactAlias() {
+        for state in ActivityState.allCases {
+            XCTAssertEqual(TrayShimmer.state(for: state.label), state)
+            XCTAssertEqual(TrayShimmer.state(for: IslandDesign.compactLabel(state)), state)
+            XCTAssertEqual(TrayShimmer.enabled(state: state, visible: true, animations: true, reducedMotion: false),
+                           state.isActive && !state.needsAttention)
+            XCTAssertFalse(TrayShimmer.enabled(state: state, visible: false, animations: true, reducedMotion: false))
+            XCTAssertFalse(TrayShimmer.enabled(state: state, visible: true, animations: false, reducedMotion: false))
+            XCTAssertFalse(TrayShimmer.enabled(state: state, visible: true, animations: true, reducedMotion: true))
+        }
+        XCTAssertEqual(TrayShimmer.state(for: ""), .idle)
+    }
 }

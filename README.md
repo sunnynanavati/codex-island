@@ -15,6 +15,7 @@ Current artifacts are **local, ad-hoc signed, and unnotarized**. They are prepar
 - Read-only local task monitoring with incremental, partial-line-safe rollout tailing and runtime SQLite schema discovery.
 - Stable chat cubes, attention states, recent tasks, pending questions, daily completed turns and approximate active time.
 - Nunito status typography and an always-visible quota number; unavailable quota displays a dash, and below 25% remaining is red.
+- Compact status words use a spring text reveal with the shared shimmer. Hover “active chats today” counts distinct local chats in Codex’s daily user-interaction timestamps, not currently running tasks. Codex does not expose a reliable history of read-only opens, so those cannot currently be included. Missing daily-interaction data displays a dash rather than zero.
 - Compact, hover, and pinned views share interruptible presentation motion and notch clearance.
 - Idle shows only a solved green cube and the quota ring. Working chats expand both wings symmetrically; completed peers stay until all chats finish, then the island contracts after the final cube fill.
 - Settings pages for General, Appearance, Layout, Motion, Presets, and Advanced & About; live customization and synthetic previews.
@@ -102,4 +103,4 @@ AppKit cannot guarantee overlay visibility above every system surface or in ever
 
 ## License
 
-MIT; see [LICENSE](LICENSE). Bundled Nunito fonts use the SIL Open Font License in `Sources/CodexIsland/Resources/Nunito-OFL.txt`.
+MIT; see [LICENSE](LICENSE). Bundled Nunito and Inter Tight fonts use the SIL Open Font License; their licenses are included in `Sources/CodexIsland/Resources`. Compact-rail typography remains customizable; expanded tray typography uses Inter Tight, matching the Penpot design.

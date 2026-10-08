@@ -135,6 +135,7 @@ struct IslandSnapshot: Equatable, Sendable {
     var refreshedAt: Date
     var errorMessage: String?
     var unreadCount: Int? = nil
+    var dailyChatCount: Int? = nil
 
     static let empty = IslandSnapshot(
         tasks: [], primaryTaskID: nil,
@@ -160,6 +161,10 @@ struct IslandSnapshot: Equatable, Sendable {
     }
     var activeChatSummary: String {
         "\(activeChatCount) active \(activeChatCount == 1 ? "chat" : "chats")"
+    }
+    var dailyChatSummary: String {
+        guard let dailyChatCount else { return "— active chats today" }
+        return "\(dailyChatCount) active \(dailyChatCount == 1 ? "chat" : "chats") today"
     }
     var activeAgentCount: Int {
         activeTasks.reduce(0) { $0 + max(1, $1.agentCount) }

@@ -1,6 +1,8 @@
 import AppKit
 import SQLite3
 import XCTest
+import CoreText
+import SwiftUI
 @testable import CodexIsland
 
 final class CodexIslandTests: XCTestCase {
@@ -631,6 +633,20 @@ final class CodexIslandTests: XCTestCase {
         XCTAssertNotNil(NSFont(name: IslandFont.postScriptName, size: 8))
         XCTAssertNotNil(NSFont(name: IslandFont.lightPostScriptName, size: 12))
         XCTAssertNotNil(NSFont(name: IslandFont.regularPostScriptName, size: 12))
+    }
+
+    @MainActor
+    func testPenpotTrayFontUsesRealVariableWeightsWithoutChangingRailFont() {
+        IslandFont.register()
+        XCTAssertTrue(TrayFont.isAvailable)
+        for (weight, expected) in [(SwiftUI.Font.Weight.regular, 400), (.medium, 500), (.semibold, 600)] {
+            let font = TrayFont.nsFont(size: 11, weight: weight)
+            XCTAssertEqual(font.familyName, "Inter Tight")
+            let variations = CTFontCopyVariation(font as CTFont) as? [NSNumber: NSNumber]
+            // CoreText omits the variation dictionary at the font's default (400) weight.
+            XCTAssertEqual(variations?[NSNumber(value: 0x77676874)]?.intValue ?? 400, expected)
+        }
+        XCTAssertEqual(IslandFont.nsFont(weight: .regular, size: 13).familyName, "Nunito")
     }
 
     func testCompactTypographyPersistsAndClampsSizes() throws {

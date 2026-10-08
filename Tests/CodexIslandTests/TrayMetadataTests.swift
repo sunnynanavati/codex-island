@@ -26,4 +26,12 @@ final class TrayMetadataTests: XCTestCase {
         let multiple: [String: Any] = ["electron-thread-read-state-v1": ["version": 1, "unreadByIdentity": ["a": ["local:host": [a]], "b": ["local:host": [b]]]]]
         XCTAssertNil(CodexUnreadState.count(data: try JSONSerialization.data(withJSONObject: multiple), excluding: []))
     }
+
+    func testUnreadSupportsPlainLocalHostAndCanonicalizesUUIDs() throws {
+        let id = "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"
+        let child = "BBBBBBBB-BBBB-4BBB-8BBB-BBBBBBBBBBBB"
+        let object: [String: Any] = ["electron-thread-read-state-v1": ["version": 1,
+            "unreadByIdentity": ["account": ["local": [id, child, "invalid"], "local:host": [id.lowercased()]]]]]
+        XCTAssertEqual(CodexUnreadState.count(data: try JSONSerialization.data(withJSONObject: object), excluding: [child.lowercased()]), 1)
+    }
 }

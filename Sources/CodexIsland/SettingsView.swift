@@ -64,7 +64,7 @@ struct SettingsView: View {
                 SettingsDiagnostics(model: services.model)
                 Section("Privacy & licenses") {
                     Text("Task metadata and rollouts are read locally and never modified. No analytics, telemetry, or account credentials are collected. Codex handles authenticated quota requests.")
-                    Text("Codex Island is MIT licensed. Nunito is distributed under the SIL Open Font License. Licenses are included with the app.")
+                    Text("Codex Island is MIT licensed. Nunito and Inter Tight are distributed under the SIL Open Font License. Licenses are included with the app.")
                         .foregroundStyle(.secondary)
                 }
                 Section("Reset") {
@@ -154,12 +154,8 @@ struct SettingsView: View {
                 Text("macOS Reduce Motion replaces movement with fades and static cubes.").font(.caption).foregroundStyle(.secondary)
             }
             Section("State changes") {
-                Picker("Transition", selection: $preferences.values.statusTransition) {
-                    ForEach(StatusTransitionStyle.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                SettingSlider("Duration", value: $preferences.values.statusDuration,
-                              range: 0.18...0.30, step: 0.01, unit: "ms", multiplier: 1000)
-                SettingSlider("Blur", value: $preferences.values.statusBlur, range: 0...3, step: 0.1, unit: "pt")
+                Text("Status words use a spring text reveal. Reduce Motion replaces the slide and soft entry blur with a short fade.")
+                    .font(.caption).foregroundStyle(.secondary)
             }.disabled(!preferences.values.animationsEnabled)
             Section("Island response") {
                 SettingSlider("Spring speed", value: $preferences.values.springSpeed, range: 0.8...1.2, step: 0.05, unit: "×")

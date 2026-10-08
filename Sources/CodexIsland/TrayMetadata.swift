@@ -26,6 +26,7 @@ struct TrayNumberTicker: View {
     let value: Int
     let motionEnabled: Bool
     var size: CGFloat = 11
+    var weight: Font.Weight = .regular
     @Environment(\.accessibilityReduceMotion) private var reducedMotion
 
     static func digits(_ value: Int) -> [Int] { String(max(0, value)).compactMap { $0.wholeNumberValue }.reversed() }
@@ -52,11 +53,12 @@ struct TrayNumberTicker: View {
                     .animation(motionEnabled ? .easeOut(duration: 0.12) : nil, value: value)
             }
         }
-        .font(.system(size: size)).monospacedDigit()
+        .font(TrayFont.font(size: size, weight: weight)).tracking(TrayFont.smallTextTracking).monospacedDigit()
         .accessibilityElement(children: .ignore).accessibilityLabel("\(max(0, value))")
     }
     private var digitWidth: CGFloat {
-        ("0" as NSString).size(withAttributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: size, weight: .regular)]).width
+        ((0...9).map { ("\($0)" as NSString).size(withAttributes: [.font: TrayFont.nsFont(size: size, weight: weight)]).width }.max() ?? size)
+            + TrayFont.smallTextTracking
     }
 }
 
@@ -79,7 +81,7 @@ struct TrayRelativeTime: View {
         let age = TrayAge(date: date, now: now)
         return HStack(spacing: 0) {
             TrayNumberTicker(value: age.value, motionEnabled: motionEnabled && visible, size: size)
-            Text("\(age.unit) ago").font(.system(size: size))
+            Text("\(age.unit) ago").font(TrayFont.font(size: size)).tracking(TrayFont.smallTextTracking)
         }
         .accessibilityElement(children: .ignore).accessibilityLabel(age.label)
         .help(date.formatted(date: .abbreviated, time: .shortened))
@@ -96,10 +98,31 @@ enum CodexUnreadState {
               identities.count <= 1 else { return nil }
         var ids: Set<String> = []
         for hosts in identities.values {
-            for (host, unread) in hosts where host.hasPrefix("local:") {
-                ids.formUnion(unread.filter { UUID(uuidString: $0) != nil })
+            for (host, unread) in hosts where host == "local" || host.hasPrefix("local:") {
+                ids.formUnion(unread.compactMap { UUID(uuidString: $0)?.uuidString })
             }
         }
-        return ids.subtracting(childIDs).count
+        return ids.subtracting(childIDs.compactMap { UUID(uuidString: $0)?.uuidString }).count
+    }
+}
+
+enum CodexDailyChatActivity {
+    /// Codex records user-interaction milliseconds under JSON-encoded [host, chat] identities.
+    /// This source does not record view-only opens; never substitute background task updates.
+    static func count(data: Data, now: Date, excluding childIDs: Set<String>, calendar: Calendar = .current) -> Int? {
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let atoms = root["electron-persisted-atom-state"] as? [String: Any],
+              let times = atoms["thread-user-activity-times-v1"] as? [String: Any] else { return nil }
+        let start = calendar.startOfDay(for: now)
+        var ids: Set<String> = []
+        for (key, value) in times {
+            guard let identity = try? JSONSerialization.jsonObject(with: Data(key.utf8)) as? [String],
+                  identity.count == 2, identity[0] == "local" || identity[0].hasPrefix("local:"),
+                  UUID(uuidString: identity[1]) != nil,
+                  let milliseconds = value as? Double, milliseconds.isFinite else { continue }
+            let date = Date(timeIntervalSince1970: milliseconds / 1000)
+            if date >= start && date <= now && !childIDs.contains(identity[1]) { ids.insert(identity[1]) }
+        }
+        return ids.count
     }
 }

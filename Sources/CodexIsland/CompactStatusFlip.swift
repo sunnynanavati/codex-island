@@ -5,6 +5,8 @@ struct CompactStatusFlip: View {
     let font: Font
     let motionEnabled: Bool
     let reduceMotion: Bool
+    var shimmerVisible = true
+    var increasedContrast = false
     var style: StatusTransitionStyle = .fold
     var duration = 0.28
     var blur = 3.0
@@ -50,8 +52,12 @@ struct CompactStatusFlip: View {
     }
 
     private func phrase(_ text: String) -> some View {
-        Text(text).font(font).tracking(0.15).foregroundStyle(.white)
+        Text(text).font(font)
+            .modifier(ActivityShimmerStyle(state: TrayShimmer.state(for: text), visible: shimmerVisible,
+                                           animationsEnabled: motionEnabled, reducedMotion: reduceMotion,
+                                           increasedContrast: increasedContrast))
             .lineLimit(1).minimumScaleFactor(0.88)
+            .help(text)
     }
 }
 struct StatusFlipFrame: ViewModifier, @preconcurrency Animatable {

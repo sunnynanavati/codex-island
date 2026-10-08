@@ -129,15 +129,15 @@ struct IslandView: View {
                 Color.clear.frame(width: model.notchGap)
                 ZStack(alignment: .trailing) {
                     if model.rail.label != nil {
-                        CompactStatusFlip(label: compactLabel,
+                        CompactStatusReveal(label: compactLabel,
                                           font: IslandFont.font(weight: model.typography.statusWeight,
                                                                 size: model.typography.statusSize,
                                                                 family: model.preferences.values.fontFamily),
+                                          fontSize: model.typography.statusSize,
                                           motionEnabled: model.animationsEnabled,
                                           reduceMotion: reduceMotion,
-                                          style: model.preferences.values.statusTransition,
-                                          duration: model.preferences.values.statusDuration,
-                                          blur: model.preferences.values.statusBlur)
+                                          shimmerVisible: model.preferences.values.showIsland && labelOpacity > 0.9,
+                                          increasedContrast: increasedContrast)
                             .frame(width: textWidth)
                             .offset(x: -ringWidth - model.preferences.values.statusGap)
                             .opacity(labelOpacity)
@@ -173,17 +173,19 @@ struct IslandView: View {
                         Text(primary.workspaceName).lineLimit(1)
                         Text("·")
                         TrayActivityText(state: primary.state, visible: model.preferences.values.showIsland && model.presentation == .preview && previewOpacity > 0.9,
-                                         animationsEnabled: model.animationsEnabled)
+                                         animationsEnabled: model.animationsEnabled,
+                                         reduceMotionOverride: reduceMotion, increasedContrastOverride: increasedContrast)
                         Spacer(minLength: 0)
                     }
-                    .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
+                    .font(.system(size: 11)).tracking(TrayFont.smallTextTracking).foregroundStyle(IslandDesign.secondary)
                 }
                 HStack {
-                    Text("\(model.snapshot.activeChatSummary) · \(model.snapshot.attentionCount) attention")
+                    Text("\(model.snapshot.dailyChatSummary) · \(model.snapshot.attentionCount) attention")
+                        .help("Distinct local chats with requests recorded by Codex today. Read-only opens are not exposed by Codex.")
                     Spacer()
                     Image(systemName: "arrow.down.right.and.arrow.up.left").rotationEffect(.degrees(180))
                 }
-                .font(.system(size: 10, weight: .medium)).foregroundStyle(IslandDesign.secondary)
+                .font(.system(size: 10, weight: .medium)).tracking(TrayFont.smallTextTracking).foregroundStyle(IslandDesign.secondary)
             }
             .padding(.horizontal, 20).padding(.top, 10).padding(.bottom, 14)
             .contentShape(Rectangle())
@@ -262,7 +264,8 @@ struct IslandView: View {
             if let primary {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(primary.currentRequestTitle)
-                        .font(.system(size: 19, weight: .semibold)).lineLimit(2)
+                        .font(TrayFont.font(size: 19, weight: .semibold)).lineSpacing(3).lineLimit(2)
+                        .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
                         .help(primary.currentRequestTitle)
                     HStack(spacing: 6) {
@@ -272,13 +275,14 @@ struct IslandView: View {
                             .help(primary.workspaceName)
                         TrayBullet()
                         TrayActivityText(state: primary.state, visible: model.preferences.values.showIsland && expandedInteractive && model.page == .activity,
-                                         animationsEnabled: model.animationsEnabled)
+                                         animationsEnabled: model.animationsEnabled,
+                                         reduceMotionOverride: reduceMotion, increasedContrastOverride: increasedContrast)
                         Spacer()
                         TrayRelativeTime(date: primary.updatedAt, now: model.snapshot.refreshedAt,
                                          visible: model.preferences.values.showIsland && expandedInteractive && model.page == .activity,
                                          motionEnabled: model.animationsEnabled && !reduceMotion)
                     }
-                    .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
+                    .font(TrayFont.font(size: 11)).tracking(TrayFont.smallTextTracking).foregroundStyle(IslandDesign.secondary)
                 }
                 if let question = primary.pendingQuestion {
                     action(question.header + " · Answer in Codex", symbol: "questionmark.bubble") {
@@ -308,11 +312,15 @@ struct IslandView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(task.cleanedTitle).font(.system(size: 12, weight: .medium)).lineLimit(1).help(task.cleanedTitle)
                     HStack(spacing: 4) {
-                        Text("\(task.workspaceName) · \(task.state.label)").lineLimit(1)
+                        Text(task.workspaceName).lineLimit(1).help(task.workspaceName)
+                        TrayBullet()
+                        TrayActivityText(state: task.state, visible: model.preferences.values.showIsland && expandedInteractive,
+                                         animationsEnabled: model.animationsEnabled,
+                                         reduceMotionOverride: reduceMotion, increasedContrastOverride: increasedContrast)
                         TrayRelativeTime(date: task.updatedAt, now: model.snapshot.refreshedAt,
                                          visible: model.preferences.values.showIsland && expandedInteractive,
                                          motionEnabled: model.animationsEnabled && !reduceMotion, size: 10)
-                    }.font(.system(size: 10)).foregroundStyle(IslandDesign.secondary)
+                    }.font(.system(size: 10)).tracking(TrayFont.smallTextTracking).foregroundStyle(IslandDesign.secondary)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: task.pendingQuestion != nil ? "chevron.right" : "arrow.up.right")
@@ -327,18 +335,20 @@ struct IslandView: View {
         VStack(spacing: 12) {
             if model.page == .activity {
                 HStack(spacing: 6) {
-                    TrayNumberTicker(value: model.snapshot.activeChatCount, motionEnabled: model.animationsEnabled && !reduceMotion && expandedInteractive, size: 10)
-                    Text("active")
+                    if let daily = model.snapshot.dailyChatCount {
+                        TrayNumberTicker(value: daily, motionEnabled: model.animationsEnabled && !reduceMotion && expandedInteractive, size: 10, weight: .medium)
+                    } else { Text("—") }
+                    Text("active").help("Distinct local chats with interactions recorded today, matching the hover tray. Read-only opens are not exposed by Codex.")
                     TrayBullet()
                     if let unread = model.snapshot.unreadCount {
-                        TrayNumberTicker(value: unread, motionEnabled: model.animationsEnabled && !reduceMotion && expandedInteractive, size: 10)
+                        TrayNumberTicker(value: unread, motionEnabled: model.animationsEnabled && !reduceMotion && expandedInteractive, size: 10, weight: .medium)
                     } else { Text("—") }
                     Text("unread")
                     TrayBullet()
-                    TrayNumberTicker(value: model.snapshot.attentionCount, motionEnabled: model.animationsEnabled && !reduceMotion && expandedInteractive, size: 10)
+                    TrayNumberTicker(value: model.snapshot.attentionCount, motionEnabled: model.animationsEnabled && !reduceMotion && expandedInteractive, size: 10, weight: .medium)
                     Text("attention")
                     Spacer(minLength: 0)
-                }.font(.system(size: 10, weight: .medium)).foregroundStyle(IslandDesign.secondary)
+                }.font(TrayFont.font(size: 10, weight: .medium)).tracking(TrayFont.smallTextTracking).foregroundStyle(IslandDesign.secondary)
                     .help(model.snapshot.unreadCount == nil ? "Codex unread data is unavailable." : "Unread chats reported by local Codex.")
             }
             rule.frame(height: 1)
@@ -351,7 +361,7 @@ struct IslandView: View {
                         Text("\(Int(quota.remainingPercent))% remaining")
                             .foregroundStyle(IslandDesign.quotaFooterColor(quota))
                             .monospacedDigit().contentTransition(.numericText())
-                    }.font(.system(size: 11, weight: .medium))
+                    }.font(TrayFont.font(size: 11, weight: .medium)).tracking(TrayFont.smallTextTracking)
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color.white.opacity(0.14))
                         Capsule().fill(IslandDesign.quotaFooterColor(quota))
@@ -362,12 +372,12 @@ struct IslandView: View {
                     .accessibilityLabel("\(Int(quota.remainingPercent)) percent of quota remaining")
                     if let reset = quota.resetAt {
                         Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))")
-                            .font(.system(size: 10)).foregroundStyle(IslandDesign.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .font(TrayFont.font(size: 10)).tracking(TrayFont.smallTextTracking).foregroundStyle(IslandDesign.secondary)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
             } else {
-                Text("Quota unavailable").font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
+                Text("Quota unavailable").font(.system(size: 11)).tracking(TrayFont.smallTextTracking).foregroundStyle(IslandDesign.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }

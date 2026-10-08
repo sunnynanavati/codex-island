@@ -10,37 +10,61 @@ enum TrayShimmer {
         let remainder = time.truncatingRemainder(dividingBy: duration)
         return (remainder < 0 ? remainder + duration : remainder) / duration
     }
+
+    static func state(for label: String) -> ActivityState {
+        ActivityState.allCases.first { $0.label == label || IslandDesign.compactLabel($0) == label } ?? .idle
+    }
+}
+
+/// The same absolute-time sweep is used by rail phrases and every tray status.
+struct ActivityShimmerStyle: ViewModifier {
+    let state: ActivityState
+    let visible: Bool
+    let animationsEnabled: Bool
+    let reducedMotion: Bool
+    let increasedContrast: Bool
+
+    func body(content: Content) -> some View {
+        Group {
+            if TrayShimmer.enabled(state: state, visible: visible, animations: animationsEnabled, reducedMotion: reducedMotion) {
+                TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
+                    let phase = TrayShimmer.phase(at: context.date.timeIntervalSinceReferenceDate)
+                    content.foregroundStyle(LinearGradient(
+                        stops: [.init(color: muted, location: 0), .init(color: muted, location: 0.3),
+                                .init(color: .white, location: 0.5), .init(color: muted, location: 0.7),
+                                .init(color: muted, location: 1)],
+                        startPoint: UnitPoint(x: phase * 2 - 1, y: 0.5),
+                        endPoint: UnitPoint(x: phase * 2, y: 0.5)))
+                }
+            } else {
+                content.foregroundStyle(state.needsAttention ? IslandDesign.color(state) : muted)
+            }
+        }
+    }
+
+    private var muted: Color { increasedContrast ? .white : IslandDesign.secondary }
 }
 
 struct TrayActivityText: View {
     let state: ActivityState
     let visible: Bool
     let animationsEnabled: Bool
+    var reduceMotionOverride: Bool? = nil
+    var increasedContrastOverride: Bool? = nil
     @Environment(\.accessibilityReduceMotion) private var reducedMotion
     @Environment(\.colorSchemeContrast) private var colorContrast
 
     var body: some View {
-        Group {
-            if TrayShimmer.enabled(state: state, visible: visible, animations: animationsEnabled, reducedMotion: reducedMotion) {
-                TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
-                    let phase = TrayShimmer.phase(at: context.date.timeIntervalSinceReferenceDate)
-                    Text(state.label).foregroundStyle(LinearGradient(
-                        stops: [.init(color: muted, location: 0), .init(color: muted, location: 0.3),
-                                .init(color: .white, location: 0.5), .init(color: muted, location: 0.7),
-                                .init(color: muted, location: 1)],
-                        startPoint: UnitPoint(x: phase * 2 - 1, y: 0),
-                        endPoint: UnitPoint(x: phase * 2, y: 0.35)))
-                }
-            } else {
-                Text(state.label).foregroundStyle(state.needsAttention || state == .failed
-                                                 ? IslandDesign.color(state) : muted)
-            }
-        }
+        Text(state.label)
+        .font(TrayFont.font(size: 12))
+        .tracking(TrayFont.smallTextTracking)
+        .modifier(ActivityShimmerStyle(state: state, visible: visible, animationsEnabled: animationsEnabled,
+                                       reducedMotion: reduceMotionOverride ?? reducedMotion,
+                                       increasedContrast: increasedContrastOverride ?? (colorContrast == .increased)))
         .lineLimit(1).fixedSize(horizontal: true, vertical: false)
-        .accessibilityLabel(state.label)
+        .help(state.label).accessibilityLabel(state.label)
     }
 
-    private var muted: Color { colorContrast == .increased ? .white : IslandDesign.secondary }
 }
 
 struct ProjectFolderIcon: Shape {

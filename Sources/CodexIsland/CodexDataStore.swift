@@ -23,6 +23,8 @@ actor CodexDataStore {
     private var unreadStateStamp: Date?
     private var unreadStateChildren: Set<String> = []
     private var cachedUnreadCount: Int?
+    private var cachedDailyChatCount: Int?
+    private var chatStatsDay: Date?
     private var selector = PrimaryTaskSelector()
 
     init(codexRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex")) {
@@ -79,6 +81,7 @@ actor CodexDataStore {
         }
         tasks.sort { $0.updatedAt > $1.updatedAt }
         let primary = selector.select(from: tasks, now: now)
+        let localStats = localChatStats(excluding: Set(tasks.filter(\.isChildAgent).map(\.id)), now: now)
         return IslandSnapshot(
             tasks: tasks,
             primaryTaskID: primary,
@@ -86,19 +89,27 @@ actor CodexDataStore {
             quota: SnapshotAggregator.quota(tasks: tasks, now: now),
             refreshedAt: now,
             errorMessage: nil,
-            unreadCount: unreadCount(excluding: Set(tasks.filter(\.isChildAgent).map(\.id)))
+            unreadCount: localStats.unread,
+            dailyChatCount: localStats.daily
         )
     }
 
-    private func unreadCount(excluding children: Set<String>) -> Int? {
+    private func localChatStats(excluding children: Set<String>, now: Date) -> (unread: Int?, daily: Int?) {
         let url = codexRoot.appendingPathComponent(".codex-global-state.json")
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
-              let stamp = attributes[.modificationDate] as? Date else { return nil }
-        if stamp == unreadStateStamp && children == unreadStateChildren { return cachedUnreadCount }
+              let stamp = attributes[.modificationDate] as? Date else { return (nil, nil) }
+        let day = Calendar.current.startOfDay(for: now)
+        if stamp == unreadStateStamp && children == unreadStateChildren && day == chatStatsDay {
+            return (cachedUnreadCount, cachedDailyChatCount)
+        }
+        // Do not cache a transient read failure; retry on the next local task poll.
+        guard let data = try? Data(contentsOf: url) else { return (nil, nil) }
         unreadStateStamp = stamp
         unreadStateChildren = children
-        cachedUnreadCount = (try? Data(contentsOf: url)).flatMap { CodexUnreadState.count(data: $0, excluding: children) }
-        return cachedUnreadCount
+        chatStatsDay = day
+        cachedUnreadCount = CodexUnreadState.count(data: data, excluding: children)
+        cachedDailyChatCount = CodexDailyChatActivity.count(data: data, now: now, excluding: children)
+        return (cachedUnreadCount, cachedDailyChatCount)
     }
 
     private struct Row {

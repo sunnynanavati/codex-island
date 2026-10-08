@@ -15,6 +15,7 @@ enum IslandFont {
         isAvailable = registerFont(named: postScriptName)
         isLightAvailable = registerFont(named: lightPostScriptName)
         isRegularAvailable = registerFont(named: regularPostScriptName)
+        TrayFont.register()
     }
 
     private static func registerFont(named name: String) -> Bool {
@@ -64,5 +65,37 @@ enum IslandFont {
         case .semibold: name = postScriptName; fallbackWeight = .semibold
         }
         return (family == .nunito ? NSFont(name: name, size: size) : nil) ?? .systemFont(ofSize: size, weight: fallbackWeight)
+    }
+}
+
+/// Penpot tray typography is independent of the user's compact-rail typography.
+@MainActor
+enum TrayFont {
+    static let smallTextTracking: CGFloat = 0.18
+    private(set) static var isAvailable = false
+
+    static func register() {
+        guard let url = Bundle.main.url(forResource: "InterTight", withExtension: "ttf")
+            ?? Bundle.module.url(forResource: "InterTight", withExtension: "ttf") else { return }
+        var error: Unmanaged<CFError>?
+        isAvailable = CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error)
+            || NSFont(name: "InterTight-Regular", size: 12) != nil
+        if !isAvailable { AppLog.write("Inter Tight registration failed; using system tray typography") }
+    }
+
+    static func nsFont(size: CGFloat, weight: Font.Weight = .regular) -> NSFont {
+        guard isAvailable else {
+            return .systemFont(ofSize: size, weight: weight == .semibold ? .semibold : weight == .medium ? .medium : .regular)
+        }
+        let axisWeight = weight == .semibold ? 600 : weight == .medium ? 500 : 400
+        let descriptor = CTFontDescriptorCreateWithAttributes([
+            kCTFontNameAttribute: "InterTight-Regular",
+            kCTFontVariationAttribute: [NSNumber(value: 0x77676874): NSNumber(value: axisWeight)]
+        ] as CFDictionary)
+        return CTFontCreateWithFontDescriptor(descriptor, size, nil) as NSFont
+    }
+
+    static func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        Font(nsFont(size: size, weight: weight))
     }
 }

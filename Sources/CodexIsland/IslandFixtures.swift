@@ -49,7 +49,7 @@ enum IslandFixtures {
                                                                           windowMinutes: 10080, resetAt: now.addingTimeInterval(86400)),
                               refreshedAt: now,
                               errorMessage: name == "error" ? "Codex data is temporarily unavailable. Showing the last successful update. Refresh to retry; if this persists, reopen Codex and refresh again." : nil,
-                              unreadCount: 2)
+                              unreadCount: 2, dailyChatCount: 3)
     }
 }
 
