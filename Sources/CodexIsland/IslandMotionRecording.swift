@@ -29,6 +29,16 @@ enum IslandMotionRecording {
             (3.38, { model.hover(false) }),
             (3.48, { model.hover(true) }),
             (3.65, { model.clickIsland() }),
+            (3.95, {
+                var snapshot = IslandFixtures.snapshot("active")
+                snapshot.tasks[0].updatedAt = Date().addingTimeInterval(-125)
+                model.setFixture(snapshot)
+            }),
+            (4.12, {
+                var snapshot = IslandFixtures.snapshot("active")
+                snapshot.tasks[0].updatedAt = Date().addingTimeInterval(-185)
+                model.setFixture(snapshot)
+            }),
             (4.3, { model.setFixture(IslandFixtures.snapshot("completed")) }),
             (5.0, { model.dismiss() }),
             (5.7, { model.setFixture(IslandFixtures.snapshot("active")); model.typography.statusSize = 14 }),

@@ -157,7 +157,7 @@ struct IslandView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Codex Island, \(model.rail.accessibleStatus), \(CompactQuotaState(quota: model.snapshot.quota).accessibilityLabel). Open task details")
+        .accessibilityLabel("Codex Island, \(model.rail.accessibleStatus), \(CompactQuotaState(quota: model.snapshot.quota).accessibilityLabel). Expand island")
     }
 
     private var preview: some View {
@@ -238,7 +238,6 @@ struct IslandView: View {
         case .activity: "Codex"
         case .recent: "Recent tasks"
         case .question: "Your input"
-        case .task: "Task details"
         }
     }
 
@@ -255,14 +254,6 @@ struct IslandView: View {
                 Text("This question has been resolved.").font(.system(size: 14, weight: .medium))
                 action("Back to activity", symbol: "arrow.left") { model.page = .activity }
             }
-        case let .task(id):
-            if let task = model.snapshot.tasks.first(where: { $0.id == id }) {
-                taskDetails(task)
-            } else {
-                Text("This task is no longer available. Return to activity or refresh to check again.")
-                    .font(.system(size: 12)).foregroundStyle(IslandDesign.secondary)
-                action("Back to activity", symbol: "arrow.left") { model.page = .activity }
-            }
         }
     }
 
@@ -273,26 +264,21 @@ struct IslandView: View {
                     Text(primary.currentRequestTitle)
                         .font(.system(size: 19, weight: .semibold)).lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
-                    action("Task details", symbol: "text.alignleft") { model.page = .task(primary.id) }
+                        .help(primary.currentRequestTitle)
                     HStack(spacing: 6) {
-                        Image(systemName: "folder").accessibilityHidden(true)
+                        ProjectFolderIcon().stroke(IslandDesign.secondary, style: StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round))
+                            .frame(width: 13, height: 13).accessibilityHidden(true)
                         Text(primary.workspaceName).lineLimit(1)
+                            .help(primary.workspaceName)
+                        TrayBullet()
+                        TrayActivityText(state: primary.state, visible: model.preferences.values.showIsland && expandedInteractive && model.page == .activity,
+                                         animationsEnabled: model.animationsEnabled)
                         Spacer()
-                        Text(primary.updatedAt.formatted(.relative(presentation: .named))).lineLimit(1)
+                        TrayRelativeTime(date: primary.updatedAt, now: model.snapshot.refreshedAt,
+                                         visible: model.preferences.values.showIsland && expandedInteractive && model.page == .activity,
+                                         motionEnabled: model.animationsEnabled && !reduceMotion)
                     }
                     .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
-                    HStack(spacing: 6) {
-                        HStack(spacing: 6) {
-                            Image(systemName: IslandDesign.symbol(primary.state)).foregroundStyle(IslandDesign.secondary)
-                            TrayActivityText(state: primary.state, visible: model.preferences.values.showIsland && expandedInteractive && model.page == .activity,
-                                             animationsEnabled: model.animationsEnabled)
-                        }
-                        Spacer()
-                        Text("\(model.snapshot.activeChatSummary) · \(model.snapshot.attentionCount) attention")
-                            .foregroundStyle(IslandDesign.secondary)
-                    }
-                    .font(.system(size: 11, weight: .medium))
-                    .animation(labelAnimation, value: primary.state)
                 }
                 if let question = primary.pendingQuestion {
                     action(question.header + " · Answer in Codex", symbol: "questionmark.bubble") {
@@ -300,7 +286,6 @@ struct IslandView: View {
                     }
                 }
             }
-            dailySummary
             let others = model.snapshot.tasks.filter {
                 $0.id != model.snapshot.primaryTaskID && ($0.state.isActive || $0.state.needsAttention)
             }
@@ -312,7 +297,6 @@ struct IslandView: View {
     }
 
     private func taskRow(_ task: TaskSnapshot) -> some View {
-        HStack(spacing: 4) {
         IslandButton(motionEnabled: model.animationsEnabled, action: {
             if task.pendingQuestion != nil { model.page = .question(task.id) }
             else { model.openCodex(taskID: task.id) }
@@ -322,9 +306,13 @@ struct IslandView: View {
                     .font(.system(size: 13)).foregroundStyle(statusColor(task.state))
                     .frame(width: 18).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(task.cleanedTitle).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                    Text("\(task.workspaceName) · \(task.state.label) · \(task.updatedAt.formatted(.relative(presentation: .named)))")
-                        .font(.system(size: 10)).foregroundStyle(IslandDesign.secondary).lineLimit(1)
+                    Text(task.cleanedTitle).font(.system(size: 12, weight: .medium)).lineLimit(1).help(task.cleanedTitle)
+                    HStack(spacing: 4) {
+                        Text("\(task.workspaceName) · \(task.state.label)").lineLimit(1)
+                        TrayRelativeTime(date: task.updatedAt, now: model.snapshot.refreshedAt,
+                                         visible: model.preferences.values.showIsland && expandedInteractive,
+                                         motionEnabled: model.animationsEnabled && !reduceMotion, size: 10)
+                    }.font(.system(size: 10)).foregroundStyle(IslandDesign.secondary)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: task.pendingQuestion != nil ? "chevron.right" : "arrow.up.right")
@@ -333,35 +321,26 @@ struct IslandView: View {
             .padding(.horizontal, 8).frame(height: 48).contentShape(Rectangle())
         }
         .accessibilityLabel("\(task.cleanedTitle), \(task.workspaceName), \(task.state.label)")
-        iconButton("text.alignleft", "Show task details") { model.page = .task(task.id) }
-        }
-    }
-
-    private func taskDetails(_ task: TaskSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(task.cleanedTitle)
-                .font(.system(size: 19, weight: .semibold))
-                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-            if let request = task.latestUserRequest, task.currentRequestTitle != task.cleanedTitle {
-                Text("Latest request").font(.system(size: 11, weight: .medium)).foregroundStyle(IslandDesign.secondary)
-                Text(request).font(.system(size: 13)).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-            }
-            Label(task.state.label, systemImage: IslandDesign.symbol(task.state))
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(statusColor(task.state))
-            Text(task.workspacePath ?? "Unknown workspace")
-                .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
-                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
-            Text(task.updatedAt.formatted(.relative(presentation: .named)))
-                .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
-            if task.pendingQuestion != nil {
-                action("View question", symbol: "questionmark.bubble") { model.page = .question(task.id) }
-            }
-            action("Open Codex", symbol: "arrow.up.right") { model.openCodex(taskID: task.id) }
-        }
     }
 
     private var footer: some View {
         VStack(spacing: 12) {
+            if model.page == .activity {
+                HStack(spacing: 6) {
+                    TrayNumberTicker(value: model.snapshot.activeChatCount, motionEnabled: model.animationsEnabled && !reduceMotion && expandedInteractive, size: 10)
+                    Text("active")
+                    TrayBullet()
+                    if let unread = model.snapshot.unreadCount {
+                        TrayNumberTicker(value: unread, motionEnabled: model.animationsEnabled && !reduceMotion && expandedInteractive, size: 10)
+                    } else { Text("—") }
+                    Text("unread")
+                    TrayBullet()
+                    TrayNumberTicker(value: model.snapshot.attentionCount, motionEnabled: model.animationsEnabled && !reduceMotion && expandedInteractive, size: 10)
+                    Text("attention")
+                    Spacer(minLength: 0)
+                }.font(.system(size: 10, weight: .medium)).foregroundStyle(IslandDesign.secondary)
+                    .help(model.snapshot.unreadCount == nil ? "Codex unread data is unavailable." : "Unread chats reported by local Codex.")
+            }
             rule.frame(height: 1)
             if let quota = model.snapshot.quota {
                 VStack(spacing: 6) {
@@ -421,20 +400,6 @@ struct IslandView: View {
             Image(systemName: symbol).font(.system(size: 11, weight: .medium))
                 .foregroundStyle(IslandDesign.secondary).frame(width: 30, height: 30).contentShape(Rectangle())
         }.accessibilityLabel(label).help(label)
-    }
-
-    private var dailySummary: some View {
-        let summary = DailySummary(stats: model.snapshot.dailyStats)
-        var text = AttributedString(summary.sentence)
-        text.foregroundColor = IslandDesign.secondary
-        for value in [summary.turns, summary.duration] {
-            if let range = text.range(of: value) {
-                text[range].foregroundColor = .white
-                text[range].font = .system(size: 12, weight: .medium)
-            }
-        }
-        return Text(text).font(.system(size: 12)).lineSpacing(4)
-            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func action(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {

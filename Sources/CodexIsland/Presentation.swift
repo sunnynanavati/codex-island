@@ -232,7 +232,7 @@ struct IslandLayout: Equatable, Sendable {
     }
 }
 
-enum IslandPage: Equatable { case activity, recent, question(String), task(String) }
+enum IslandPage: Equatable { case activity, recent, question(String) }
 
 enum IslandGlyphTheme: String, CaseIterable, Codable { case cube, symbols }
 

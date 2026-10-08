@@ -134,6 +134,7 @@ struct IslandSnapshot: Equatable, Sendable {
     var quota: QuotaWindow?
     var refreshedAt: Date
     var errorMessage: String?
+    var unreadCount: Int? = nil
 
     static let empty = IslandSnapshot(
         tasks: [], primaryTaskID: nil,

@@ -1,8 +1,8 @@
 import XCTest
 @testable import CodexIsland
 
-final class TaskDetailsTests: XCTestCase {
-    func testFullCleanTitleIsPreservedForLocalDetails() throws {
+final class TrayNavigationTests: XCTestCase {
+    func testFullCleanTitleIsPreservedForTooltip() throws {
         var task = try XCTUnwrap(IslandFixtures.snapshot("active").tasks.first)
         let title = String(repeating: "A detailed task title ", count: 20).trimmingCharacters(in: .whitespaces)
         task.title = "```text\n\(title)\n```"
@@ -10,12 +10,12 @@ final class TaskDetailsTests: XCTestCase {
         XCTAssertGreaterThan(task.cleanedTitle.count, 100)
     }
 
-    @MainActor func testDetailsNavigationKeepsTaskIdentityAndPinnedPresentation() throws {
+    @MainActor func testRecentNavigationKeepsTaskIdentityAndPinnedPresentation() throws {
         let model = AppModel(fixture: IslandFixtures.snapshot("active"), preferences: PreferencesStore(defaults: nil))
         let id = try XCTUnwrap(model.snapshot.primaryTaskID)
         model.presentation = .pinned
-        model.page = .task(id)
-        XCTAssertEqual(model.page, .task(id))
+        model.page = .recent
+        XCTAssertEqual(model.page, .recent)
         XCTAssertEqual(model.presentation, .pinned)
         XCTAssertEqual(model.snapshot.primaryTaskID, id)
         model.page = .activity

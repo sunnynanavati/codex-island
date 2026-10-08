@@ -19,7 +19,7 @@ enum IslandFixtures {
             tasks[0].latestUserRequestAt = now
         }
         if name == "long-title" {
-            tasks[0].title = "Refine the native island experience with stable chat companions, precise typography, graceful transitions, and recoverable local task details without losing any part of a long task title."
+            tasks[0].title = "Refine the native island experience with stable chat companions, precise typography, graceful transitions, and reliable activity summaries without losing any part of a long task title."
         }
         if name == "multiple" {
             tasks += [task("two", "Build the native settings experience", .editing),
@@ -48,7 +48,8 @@ enum IslandFixtures {
                               quota: name == "unavailable" ? nil : .init(usedPercent: name == "critical-quota" ? 80 : 26,
                                                                           windowMinutes: 10080, resetAt: now.addingTimeInterval(86400)),
                               refreshedAt: now,
-                              errorMessage: name == "error" ? "Codex data is temporarily unavailable. Showing the last successful update. Refresh to retry; if this persists, reopen Codex and refresh again." : nil)
+                              errorMessage: name == "error" ? "Codex data is temporarily unavailable. Showing the last successful update. Refresh to retry; if this persists, reopen Codex and refresh again." : nil,
+                              unreadCount: 2)
     }
 }
 
@@ -67,7 +68,6 @@ enum IslandPreviewRenderer {
                            ("preview-current-request", "current-request", .preview, .activity),
                            ("preview-idle", "idle", .preview, .activity),
                            ("recent", "active", .pinned, .recent),
-                           ("task-details", "long-title", .pinned, .task("primary")),
                            ("reduced-motion", "active", .pinned, .activity), ("high-contrast", "active", .pinned, .activity)]
         var images: [(String, NSImage)] = []
         for (filename, scenario, stage, page) in specifications {

@@ -20,6 +20,9 @@ actor CodexDataStore {
     private var reducers: [String: TaskReducer] = [:]
     private var cachedTasks: [String: TaskSnapshot] = [:]
     private var requestBootstrapAttempts: Set<String> = []
+    private var unreadStateStamp: Date?
+    private var unreadStateChildren: Set<String> = []
+    private var cachedUnreadCount: Int?
     private var selector = PrimaryTaskSelector()
 
     init(codexRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex")) {
@@ -82,8 +85,20 @@ actor CodexDataStore {
             dailyStats: SnapshotAggregator.dailyStats(tasks: tasks, now: now),
             quota: SnapshotAggregator.quota(tasks: tasks, now: now),
             refreshedAt: now,
-            errorMessage: nil
+            errorMessage: nil,
+            unreadCount: unreadCount(excluding: Set(tasks.filter(\.isChildAgent).map(\.id)))
         )
+    }
+
+    private func unreadCount(excluding children: Set<String>) -> Int? {
+        let url = codexRoot.appendingPathComponent(".codex-global-state.json")
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let stamp = attributes[.modificationDate] as? Date else { return nil }
+        if stamp == unreadStateStamp && children == unreadStateChildren { return cachedUnreadCount }
+        unreadStateStamp = stamp
+        unreadStateChildren = children
+        cachedUnreadCount = (try? Data(contentsOf: url)).flatMap { CodexUnreadState.count(data: $0, excluding: children) }
+        return cachedUnreadCount
     }
 
     private struct Row {

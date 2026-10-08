@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Simplified expanded trays: removed task details and daily filler, grouped project/activity shimmer, added minute-based rolling timestamps and local Codex unread counts.
+
 - Active tray headers use the latest user request, with an outlined project folder and motion-aware neutral activity shimmer.
 - Aligned the idle title with tray controls, removed footer actions and refresh time, and softened expanded shoulder curvature.
 - Simplified island toolbar: History and Collapse, without branding or a refresh icon.

@@ -1,6 +1,6 @@
 # Codex Island
 
-A native macOS status utility for local Codex chats. A black island joins the MacBook notch, with one cube per active chat and a persistent account-quota ring. Hover for a preview; click for task details. All customization lives in a separate Settings window.
+A native macOS status utility for local Codex chats. A black island joins the MacBook notch, with one cube per active chat and a persistent account-quota ring. Hover for a preview; click to expand activity and quota. All customization lives in a separate Settings window.
 
 ## Requirements and installation
 
