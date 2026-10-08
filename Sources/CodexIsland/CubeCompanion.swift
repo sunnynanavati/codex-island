@@ -109,18 +109,40 @@ enum CubeTimeline {
         return result
     }
 
-    static func intensity(index: Int, elapsed: Double, seed: Int) -> Double {
-        let period = 1.18
-        let order = order(seed: seed, cycle: Int(max(0, elapsed) / period))
-        let rank = order.firstIndex(of: index) ?? 0
-        let phase = max(0, elapsed).truncatingRemainder(dividingBy: period)
-        let local = (phase - Double(rank) * period / 9 + period).truncatingRemainder(dividingBy: period)
+    // A semantic activity indicator, not a measurement of model effort or CPU use.
+    static func litCellCount(for state: ActivityState) -> Int {
+        switch state {
+        case .starting, .reading, .writing: 1
+        case .planning, .thinking: 2
+        case .scanning, .searching, .editing, .running: 3
+        case .waitingForInput, .attentionRequired, .completed, .failed, .cancelled, .idle: 0
+        }
+    }
+
+    static func solvingPulse(index: Int, elapsed: Double, seed: Int, state: ActivityState) -> Double {
+        let count = litCellCount(for: state)
+        guard count > 0, (0..<9).contains(index), elapsed.isFinite else { return 0 }
+        // Each hop finishes its pulse before the next begins: never more than
+        // the state's cell budget. All lanes share one clock and permutation.
+        let hopDuration = 0.22
+        let time = max(0, elapsed)
+        let step = Int(time / hopDuration)
+        let path = order(seed: seed, cycle: step / 9)
+        let selected = (0..<count).contains { lane in
+            path[(step % 9 + lane * (9 / count)) % 9] == index
+        }
+        guard selected else { return 0 }
+        let local = time.truncatingRemainder(dividingBy: hopDuration)
         let pulse: Double
         if local < 0.035 { pulse = 1 - pow(1 - local / 0.035, 3) }
         else if local < 0.09 { pulse = 1 }
         else if local < 0.22 { pulse = 1 - pow((local - 0.09) / 0.13, 2) }
         else { pulse = 0 }
-        return 0.64 + pulse * 0.36
+        return min(1, max(0, pulse))
+    }
+
+    static func intensity(index: Int, elapsed: Double, seed: Int, state: ActivityState = .starting) -> Double {
+        0.64 + solvingPulse(index: index, elapsed: elapsed, seed: seed, state: state) * 0.36
     }
 
     static func animates(_ cube: CubeDescriptor, at now: Date, enabled: Bool, visible: Bool) -> Bool {
@@ -129,6 +151,12 @@ enum CubeTimeline {
         if cube.state == .completed { return elapsed < completionDuration }
         if cube.state.needsAttention { return elapsed < 1.2 }
         return cube.state.isActive
+    }
+
+    // Reuse the solving pulse: glow and lit cell must never drift apart.
+    static func glow(index: Int, elapsed: Double, seed: Int, state: ActivityState, enabled: Bool) -> Double {
+        guard enabled, state.isActive, !state.needsAttention else { return 0 }
+        return solvingPulse(index: index, elapsed: elapsed, seed: seed, state: state)
     }
 
     static func visibleCount(total: Int, wingWidth: CGFloat) -> Int {
@@ -153,6 +181,7 @@ struct CubeCompanion: NSViewRepresentable {
 @MainActor
 final class CubeLayerView: NSView {
     private var tiles: [CAShapeLayer] = []
+    private var glows: [CAShapeLayer] = []
     private var descriptor = CubeDescriptor.idle
     private var paused = false
     private var frozen = false
@@ -173,6 +202,18 @@ final class CubeLayerView: NSView {
     init() {
         super.init(frame: CGRect(x: 0, y: 0, width: 22, height: 22))
         wantsLayer = true
+        layer?.masksToBounds = false
+        // Put every halo behind the whole face, preserving crisp cell edges.
+        for _ in 0..<9 {
+            let glow = CAShapeLayer()
+            glow.shadowOffset = .zero
+            // Compact edge bloom, not a large diffuse cloud around the face.
+            glow.shadowRadius = 1.4
+            glow.shadowOpacity = 0.9
+            glow.opacity = 0
+            layer?.addSublayer(glow)
+            glows.append(glow)
+        }
         for _ in 0..<9 {
             let tile = CAShapeLayer()
             layer?.addSublayer(tile)
@@ -196,6 +237,10 @@ final class CubeLayerView: NSView {
             tiles[i].path = CGPath(roundedRect: CGRect(x: 0, y: 0, width: size, height: size),
                                   cornerWidth: 1.1, cornerHeight: 1.1, transform: nil)
             tiles[i].contentsScale = scale
+            glows[i].frame = tiles[i].frame
+            glows[i].path = tiles[i].path
+            glows[i].shadowPath = tiles[i].path
+            glows[i].contentsScale = scale
         }
         CATransaction.commit()
     }
@@ -247,10 +292,17 @@ final class CubeLayerView: NSView {
                 intensity = i == 4 ? 1 : 0.62
                 if !paused, i == 4, elapsed < 1.2 { intensity = 0.8 + 0.2 * sin(elapsed / 1.2 * .pi) }
             } else if descriptor.state.isActive && !paused {
-                intensity = CubeTimeline.intensity(index: i, elapsed: elapsed, seed: descriptor.seed)
+                intensity = CubeTimeline.intensity(index: i, elapsed: elapsed, seed: descriptor.seed, state: descriptor.state)
             }
-            tiles[i].fillColor = color.cgColor
+            let glow = CubeTimeline.glow(
+                index: i, elapsed: elapsed, seed: descriptor.seed,
+                state: descriptor.state, enabled: !paused && descriptor.solvedColor == nil)
+            let litColor = color.blended(withFraction: 0.14 * glow, of: .white) ?? color
+            tiles[i].fillColor = litColor.cgColor
             tiles[i].opacity = Float(intensity)
+            glows[i].fillColor = litColor.cgColor
+            glows[i].shadowColor = litColor.cgColor
+            glows[i].opacity = Float(0.8 * glow)
         }
         CATransaction.commit()
         let visible = window?.occlusionState.contains(.visible) == true && !isHiddenOrHasHiddenAncestor

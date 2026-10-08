@@ -14,6 +14,7 @@ Current artifacts are **local, ad-hoc signed, and unnotarized**. They are prepar
 
 - Read-only local task monitoring with incremental, partial-line-safe rollout tailing and runtime SQLite schema discovery.
 - Stable chat cubes, attention states, recent tasks, pending questions, daily completed turns and approximate active time.
+- Solving cubes use synchronized cell brightness and color-matched glow: one pulsing cell for Starting/Reading/Writing, two for Planning/Thinking, and three for Scanning/Searching/Editing/Running tools. Pulses follow seeded paths without adding timers. These are semantic activity levels, not measured compute effort; Reduce Motion or disabled cube animation keeps the face static. Attention, failure, and solved-green completion retain their existing indicators.
 - Nunito status typography and an always-visible quota number; unavailable quota displays a dash, and below 25% remaining is red.
 - Compact status words use a spring text reveal with the shared shimmer. Hover “active chats today” counts distinct local chats in Codex’s daily user-interaction timestamps, not currently running tasks. Codex does not expose a reliable history of read-only opens, so those cannot currently be included. Missing daily-interaction data displays a dash rather than zero.
 - Compact, hover, and pinned views share interruptible presentation motion and notch clearance.
