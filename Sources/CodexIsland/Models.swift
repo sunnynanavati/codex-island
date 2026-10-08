@@ -96,6 +96,12 @@ struct TaskSnapshot: Codable, Equatable, Sendable, Identifiable {
     var agentCount: Int
     var error: String?
     var rootChatID: String? = nil
+    var latestUserRequest: String? = nil
+    var latestUserRequestAt: Date? = nil
+
+    var currentRequestTitle: String {
+        Self.cleanTitle(latestUserRequest ?? title)
+    }
 
     var workspaceName: String {
         guard let workspacePath else { return "Unknown workspace" }
@@ -103,7 +109,11 @@ struct TaskSnapshot: Codable, Equatable, Sendable, Identifiable {
     }
 
     var cleanedTitle: String {
-        let withoutFence = title.replacingOccurrences(
+        Self.cleanTitle(title)
+    }
+
+    private static func cleanTitle(_ text: String) -> String {
+        let withoutFence = text.replacingOccurrences(
             of: #"^\s*```[a-zA-Z]*\s*"#, with: "", options: .regularExpression
         ).replacingOccurrences(of: #"\s*```\s*$"#, with: "", options: .regularExpression)
         let line = withoutFence.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)

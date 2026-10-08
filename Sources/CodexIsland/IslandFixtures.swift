@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 enum IslandFixtures {
-    static let names = ["idle", "active", "multiple", "mixed", "attention", "question", "completed", "failed", "cancelled", "critical-quota", "unavailable", "error"]
+    static let names = ["idle", "active", "current-request", "multiple", "mixed", "attention", "question", "completed", "failed", "cancelled", "critical-quota", "unavailable", "error"]
 
     static func snapshot(_ name: String, now: Date = Date()) -> IslandSnapshot {
         func task(_ id: String, _ title: String, _ state: ActivityState) -> TaskSnapshot {
@@ -13,6 +13,11 @@ enum IslandFixtures {
         }
         var tasks = [task("primary", "Refine the details. Make every interaction feel natural.", .thinking)]
         if name == "idle" { tasks = [] }
+        if name == "current-request" {
+            tasks[0].title = "Original project setup"
+            tasks[0].latestUserRequest = "Polish the hover tray and its activity feedback."
+            tasks[0].latestUserRequestAt = now
+        }
         if name == "long-title" {
             tasks[0].title = "Refine the native island experience with stable chat companions, precise typography, graceful transitions, and recoverable local task details without losing any part of a long task title."
         }
@@ -59,6 +64,7 @@ enum IslandPreviewRenderer {
                            ("compact-critical", "critical-quota", .compact, .activity),
                            ("compact-unavailable", "unavailable", .compact, .activity),
                            ("preview", "active", .preview, .activity),
+                           ("preview-current-request", "current-request", .preview, .activity),
                            ("preview-idle", "idle", .preview, .activity),
                            ("recent", "active", .pinned, .recent),
                            ("task-details", "long-title", .pinned, .task("primary")),

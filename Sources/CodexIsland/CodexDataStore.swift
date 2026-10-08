@@ -19,6 +19,7 @@ actor CodexDataStore {
     private var tailers: [String: IncrementalJSONLTailer] = [:]
     private var reducers: [String: TaskReducer] = [:]
     private var cachedTasks: [String: TaskSnapshot] = [:]
+    private var requestBootstrapAttempts: Set<String> = []
     private var selector = PrimaryTaskSelector()
 
     init(codexRoot: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex")) {
@@ -50,6 +51,14 @@ actor CodexDataStore {
                     let events = lines.compactMap(RolloutParser.parse)
                     var reducer = reducers[row.id] ?? TaskReducer()
                     reducer.reduce(task: &task, events: events)
+                    if task.latestUserRequest == nil, !task.isChildAgent,
+                       task.state.isActive || task.state.needsAttention,
+                       requestBootstrapAttempts.insert(row.id).inserted {
+                        if let request = try RolloutParser.latestUserRequest(at: URL(fileURLWithPath: path)) {
+                            task.latestUserRequest = request.text
+                            task.latestUserRequestAt = request.timestamp
+                        }
+                    }
                     lastActivityAt = reducer.lastActivityAt
                     reducers[row.id] = reducer
                 } catch {

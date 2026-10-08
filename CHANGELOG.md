@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Active tray headers use the latest user request, with an outlined project folder and motion-aware neutral activity shimmer.
 - Aligned the idle title with tray controls, removed footer actions and refresh time, and softened expanded shoulder curvature.
 - Simplified island toolbar: History and Collapse, without branding or a refresh icon.
 - Monochrome quota footer with a red warning below 25% remaining.

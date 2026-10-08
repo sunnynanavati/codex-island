@@ -1,6 +1,33 @@
 import Foundation
 
 enum RolloutParser {
+    /// Bootstrap request metadata separately: the state tail can begin after a long turn's request.
+    /// Walk backwards in bounded chunks, without replaying historical task events.
+    static func latestUserRequest(at url: URL) throws -> (text: String, timestamp: Date)? {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        var position = try handle.seekToEnd()
+        var carry = Data()
+        while position > 0 {
+            let count = min(position, 256 * 1024)
+            position -= count
+            try handle.seek(toOffset: position)
+            var chunk = try handle.read(upToCount: Int(count)) ?? Data()
+            chunk.append(carry)
+            var lines = chunk.split(separator: 0x0A, omittingEmptySubsequences: false)
+            carry = position > 0 ? Data(lines.removeFirst()) : Data()
+            for line in lines.reversed() where !line.isEmpty {
+                // Avoid decoding unrelated tool results, which can be large.
+                guard let text = String(data: Data(line.prefix(1024)), encoding: .utf8),
+                      text.contains("user_message") || text.contains("\"role\": \"user\"") || text.contains("\"role\":\"user\""),
+                      let event = parse(line: Data(line)),
+                      let request = TaskReducer.extractUserRequest(from: event) else { continue }
+                return (request, event.timestamp)
+            }
+        }
+        return nil
+    }
+
     static func parseDate(_ value: String) -> Date? {
         let formatter = ISO8601DateFormatter()
         if let date = formatter.date(from: value) { return date }
@@ -153,6 +180,11 @@ struct TaskReducer: Sendable {
 
     mutating func reduce(task: inout TaskSnapshot, events: [RolloutEvent]) {
         for event in events {
+            if let request = Self.extractUserRequest(from: event),
+               event.timestamp >= (task.latestUserRequestAt ?? .distantPast) {
+                task.latestUserRequest = request
+                task.latestUserRequestAt = event.timestamp
+            }
             let classified = ActivityClassifier.classify(event)
             if classified == .starting { turnEnded = false }
             // Late tool and metadata events can arrive after task_complete.
@@ -207,6 +239,34 @@ struct TaskReducer: Sendable {
         guard !answeredQuestionIDs.contains(questionID) else { return false }
         answeredQuestionIDs.insert(questionID)
         return true
+    }
+
+    static func extractUserRequest(from event: RolloutEvent) -> String? {
+        guard let payload = event.payload["payload"] else { return nil }
+        let kind = payload.field("type")?.string
+        let raw: String
+        if event.type == "event_msg", kind == "user_message" {
+            raw = payload.field("message")?.string ?? ""
+        } else if event.type == "response_item", kind == "message",
+                  payload.field("role")?.string == "user" {
+            if case let .array(parts) = payload.field("content") {
+                raw = parts.compactMap { part -> String? in
+                    guard ["input_text", "text"].contains(part.field("type")?.string ?? "") else { return nil }
+                    return part.field("text")?.string
+                }.joined(separator: "\n")
+            } else { raw = "" }
+        } else { return nil }
+        var text = raw
+        for marker in ["## My request for Codex:", "## My request:"] {
+            if let range = text.range(of: marker) { text = String(text[range.upperBound...]) }
+        }
+        // UI/environment envelopes are context, not the user's request.
+        for tag in ["environment_context", "in-app-browser-context", "image"] {
+            text = text.replacingOccurrences(of: "(?s)<\(tag)\\b[^>]*>.*?</\(tag)>", with: "", options: .regularExpression)
+        }
+        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty, !text.hasPrefix("# AGENTS.md instructions"), !text.hasPrefix("<permissions instructions>") else { return nil }
+        return String(text.prefix(8192))
     }
 
     static func extractQuestion(from event: RolloutEvent) -> PendingQuestion? {

@@ -163,14 +163,17 @@ struct IslandView: View {
     private var preview: some View {
         Button { model.clickIsland() } label: {
             VStack(alignment: .leading, spacing: 8) {
-                Text(primary?.cleanedTitle ?? "All quiet.")
+                Text(primary?.currentRequestTitle ?? "All quiet.")
                     .font(.system(size: 15, weight: .semibold)).lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let primary {
                     HStack(spacing: 6) {
+                        ProjectFolderIcon().stroke(IslandDesign.secondary, style: StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round))
+                            .frame(width: 13, height: 13).accessibilityHidden(true)
                         Text(primary.workspaceName).lineLimit(1)
                         Text("·")
-                        Text(primary.state.label).foregroundStyle(statusColor(primary.state)).lineLimit(1)
+                        TrayActivityText(state: primary.state, visible: model.preferences.values.showIsland && model.presentation == .preview && previewOpacity > 0.9,
+                                         animationsEnabled: model.animationsEnabled)
                         Spacer(minLength: 0)
                     }
                     .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
@@ -267,7 +270,7 @@ struct IslandView: View {
         VStack(alignment: .leading, spacing: 16) {
             if let primary {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(primary.cleanedTitle)
+                    Text(primary.currentRequestTitle)
                         .font(.system(size: 19, weight: .semibold)).lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                     action("Task details", symbol: "text.alignleft") { model.page = .task(primary.id) }
@@ -279,9 +282,11 @@ struct IslandView: View {
                     }
                     .font(.system(size: 11)).foregroundStyle(IslandDesign.secondary)
                     HStack(spacing: 6) {
-                        Label(primary.state.label, systemImage: IslandDesign.symbol(primary.state))
-                            .foregroundStyle(statusColor(primary.state))
-                            .contentTransition(.opacity)
+                        HStack(spacing: 6) {
+                            Image(systemName: IslandDesign.symbol(primary.state)).foregroundStyle(IslandDesign.secondary)
+                            TrayActivityText(state: primary.state, visible: model.preferences.values.showIsland && expandedInteractive && model.page == .activity,
+                                             animationsEnabled: model.animationsEnabled)
+                        }
                         Spacer()
                         Text("\(model.snapshot.activeChatSummary) · \(model.snapshot.attentionCount) attention")
                             .foregroundStyle(IslandDesign.secondary)
@@ -337,6 +342,10 @@ struct IslandView: View {
             Text(task.cleanedTitle)
                 .font(.system(size: 19, weight: .semibold))
                 .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            if let request = task.latestUserRequest, task.currentRequestTitle != task.cleanedTitle {
+                Text("Latest request").font(.system(size: 11, weight: .medium)).foregroundStyle(IslandDesign.secondary)
+                Text(request).font(.system(size: 13)).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            }
             Label(task.state.label, systemImage: IslandDesign.symbol(task.state))
                 .font(.system(size: 12, weight: .medium)).foregroundStyle(statusColor(task.state))
             Text(task.workspacePath ?? "Unknown workspace")
